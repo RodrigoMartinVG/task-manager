@@ -258,6 +258,13 @@ pre.hintcode{margin-top:10px;background:var(--bg1);border:1px solid var(--border
 .sync-disconnect-btn{width:100%;background:transparent;border:1px solid var(--err-border);color:var(--err-text);padding:5px 12px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:11px;margin-top:4px}
 .sync-disconnect-btn:hover{background:var(--err-bg)}
 .sync-error{background:var(--err-bg);border:1px solid var(--err-border);color:var(--err-text);padding:5px 8px;border-radius:5px;font-size:10px;margin-bottom:6px}
+.datos-btn{background:var(--bg2);border:1px solid var(--border2);color:var(--text1);padding:5px 13px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px;transition:all .15s}
+.datos-btn:hover{background:var(--bg3);border-color:var(--border2);color:var(--text0)}
+.datos-badge{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700}
+.datos-badge-ok{background:var(--ok-bg);color:var(--ok-text)}
+.datos-badge-dirty{background:var(--warn-bg);color:var(--warn-text);animation:pulse 2s ease-in-out infinite}
+.datos-badge-saving{background:var(--info-bg);color:var(--info-text)}
+.sync-action-btn-highlight{background:var(--warn-bg)!important;border-color:var(--warn-border)!important;color:var(--warn-text)!important;font-weight:700}
 .periodo-sel{display:flex;align-items:center;gap:6px;margin-right:auto}
 .periodo-anio{background:var(--bg2);border:1px solid var(--border);color:var(--text1);padding:4px 8px;border-radius:5px;font-family:inherit;font-size:11px;cursor:pointer}
 .periodo-btns{display:flex;gap:3px}
@@ -673,7 +680,6 @@ function ChecklistEditor({items,onChange}){
 
 /* ─── SYNC BAR ── */
 function SyncBar({data,dirty,onExported,imp,driveConnected,syncStatus,syncMsg,autoSave,showSync,setShowSync,handleDriveConnect,handleDriveDisconnect,handleDriveSaveNow,handleDriveLoad,toggleAutoSave}){
-  const [flash,setFlash]=useState(false);
 
   function doExport(){
     const ts=new Date().toISOString().slice(0,16).replace("T","_").replace(/:/g,"-");
@@ -681,43 +687,33 @@ function SyncBar({data,dirty,onExported,imp,driveConnected,syncStatus,syncMsg,au
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");a.href=url;a.download=`uai-planner_${ts}.json`;a.click();
     URL.revokeObjectURL(url);
-    setFlash(true);onExported();setTimeout(()=>setFlash(false),2000);
+    onExported();
   }
 
-  // Sync indicator label + style
-  let syncEl;
-  if(!driveConnected){
-    if(flash)
-      syncEl=e("button",{className:"exp-saved",disabled:true},"✓ Descargado");
-    else if(dirty)
-      syncEl=e("button",{className:"exp-dirty",onClick:doExport,title:"Cambios sin guardar"},"↓ Exportar •");
-    else
-      syncEl=e("button",{className:"exp-clean",onClick:doExport},"↓ Exportar");
-  } else {
-    if(syncStatus==="saving")
-      syncEl=e("button",{className:"sync-saving",onClick:()=>setShowSync(!showSync)},"⟳ Guardando...");
-    else if(syncStatus==="saved"||(!dirty&&syncStatus!=="error"))
-      syncEl=e("button",{className:"sync-ok",onClick:()=>setShowSync(!showSync)},"✓ Sincronizado");
-    else if(dirty&&autoSave)
-      syncEl=e("button",{className:"sync-pending",onClick:()=>setShowSync(!showSync)},"● Sin guardar");
-    else
-      syncEl=e("button",{className:"sync-pending",onClick:()=>setShowSync(!showSync)},"● Sin guardar");
+  // Status indicator dot on the button
+  let dotColor=null;
+  if(driveConnected){
+    if(syncStatus==="saving") dotColor="var(--accent)";
+    else if(dirty)            dotColor="var(--warn-text)";
+    else                      dotColor="var(--ok-text)";
+  } else if(dirty){
+    dotColor="var(--warn-text)";
   }
 
   return e("div",{className:"sync-wrap"},
-    e("button",{className:"ibtn",onClick:imp},"↑ Importar"),
-    syncEl,
-    e("button",{className:"iconbtn sync-cloud-btn "+(driveConnected?"sync-cloud-on":""),
-      onClick:()=>setShowSync(!showSync),title:"Sincronización en la nube"},"☁"),
+    e("button",{className:"datos-btn",onClick:()=>setShowSync(!showSync)},
+      e("span",{},"💾 Datos"),
+      dotColor&&e("span",{className:"datos-dot",style:{background:dotColor}})
+    ),
     showSync&&e(SyncPopover,{
-      driveConnected,syncStatus,syncMsg,autoSave,
+      driveConnected,syncStatus,syncMsg,autoSave,dirty,
       handleDriveConnect,handleDriveDisconnect,handleDriveSaveNow,handleDriveLoad,
       toggleAutoSave,onClose:()=>setShowSync(false),doExport,imp
     })
   );
 }
 
-function SyncPopover({driveConnected,syncStatus,syncMsg,autoSave,handleDriveConnect,handleDriveDisconnect,handleDriveSaveNow,handleDriveLoad,toggleAutoSave,onClose,doExport,imp}){
+function SyncPopover({driveConnected,syncStatus,syncMsg,autoSave,dirty,handleDriveConnect,handleDriveDisconnect,handleDriveSaveNow,handleDriveLoad,toggleAutoSave,onClose,doExport,imp}){
   const lastSaved=driveLastSaved();
   return e("div",{className:"sync-popover"},
     e("div",{className:"sync-pop-hd"},
@@ -727,10 +723,14 @@ function SyncPopover({driveConnected,syncStatus,syncMsg,autoSave,handleDriveConn
 
     // ── LOCAL ──
     e("div",{className:"sync-section"},
-      e("div",{className:"sync-section-title"},"LOCAL"),
+      e("div",{className:"sync-section-title",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+        "LOCAL",
+        dirty&&!driveConnected&&e("span",{style:{fontSize:10,color:"var(--warn-text)",fontWeight:500}},"● Cambios sin guardar")
+      ),
       e("div",{className:"sync-row"},
         e("button",{className:"sync-action-btn",onClick:()=>{imp();onClose();}},"↑ Importar archivo"),
-        e("button",{className:"sync-action-btn",onClick:()=>{doExport();onClose();}},"↓ Descargar archivo")
+        e("button",{className:"sync-action-btn "+(dirty?"sync-action-btn-highlight":""),
+          onClick:()=>{doExport();onClose();}},"↓ Descargar archivo")
       )
     ),
 
@@ -934,7 +934,7 @@ function App(){
       e("div",{className:"hdr-btns"},
         e(ThemeSwitcher,{current:themeId,onChange:setThemeId}),
         e("button",{className:"iconbtn",onClick:()=>setSettings(true),title:"Configurar materias y tipos"},"⚙"),
-        e(SyncBar,{
+        e(DatosBtn,{
           data,dirty,onExported,imp,
           driveConnected,syncStatus,syncMsg,autoSave,showSync,
           setShowSync,handleDriveConnect,handleDriveDisconnect,
