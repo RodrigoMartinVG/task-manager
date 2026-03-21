@@ -679,7 +679,7 @@ function ChecklistEditor({items,onChange}){
 }
 
 /* ─── DATOS BUTTON ── */
-function DatosBtn({data,dirty,onExported,imp,driveConnected,syncStatus,syncMsg,autoSave,showSync,setShowSync,handleDriveConnect,handleDriveDisconnect,handleDriveSaveNow,handleDriveLoad,toggleAutoSave}){
+function DatosBtn({data,dirty,onExported,imp,driveConnected,syncStatus,autoSave,showSync,setShowSync,handleDriveConnect,handleDriveDisconnect,handleDriveSaveNow,handleDriveLoad,toggleAutoSave}){
 
   function doExport(){
     const ts=new Date().toISOString().slice(0,16).replace("T","_").replace(/:/g,"-");
@@ -690,47 +690,44 @@ function DatosBtn({data,dirty,onExported,imp,driveConnected,syncStatus,syncMsg,a
     onExported();
   }
 
-  // Status indicator dot on the button
-  let dotColor=null;
+  // Badge on button
+  let badgeClass="", badgeText="";
   if(driveConnected){
-    if(syncStatus==="saving") dotColor="var(--accent)";
-    else if(dirty)            dotColor="var(--warn-text)";
-    else                      dotColor="var(--ok-text)";
-  } else if(dirty){
-    dotColor="var(--warn-text)";
-  }
+    if(syncStatus==="saving"){ badgeClass="datos-badge datos-badge-saving"; badgeText="⟳"; }
+    else if(dirty){            badgeClass="datos-badge datos-badge-dirty";   badgeText="●"; }
+    else{                      badgeClass="datos-badge datos-badge-ok";      badgeText="✓"; }
+  } else if(dirty){            badgeClass="datos-badge datos-badge-dirty";   badgeText="●"; }
 
   return e("div",{className:"sync-wrap"},
-    e("button",{className:"datos-btn",onClick:()=>setShowSync(!showSync)},
-      e("span",{},"💾 Datos"),
-      dotColor&&e("span",{className:"datos-dot",style:{background:dotColor}})
+    e("button",{className:"datos-btn",onClick:()=>setShowSync(!showSync),title:"Gestionar datos"},
+      "💾 Datos",
+      badgeText&&e("span",{className:badgeClass},badgeText)
     ),
-    showSync&&e(SyncPopover,{
-      driveConnected,syncStatus,syncMsg,autoSave,dirty,
-      handleDriveConnect,handleDriveDisconnect,handleDriveSaveNow,handleDriveLoad,
-      toggleAutoSave,onClose:()=>setShowSync(false),doExport,imp
+    showSync&&e(DatosPopover,{
+      driveConnected,syncStatus,autoSave,dirty,
+      handleDriveConnect,handleDriveDisconnect,
+      onClose:()=>setShowSync(false),doExport,imp
     })
   );
 }
 
-function SyncPopover({driveConnected,syncStatus,syncMsg,autoSave,dirty,handleDriveConnect,handleDriveDisconnect,handleDriveSaveNow,handleDriveLoad,toggleAutoSave,onClose,doExport,imp}){
+function DatosPopover({driveConnected,syncStatus,autoSave,dirty,handleDriveConnect,handleDriveDisconnect,onClose,doExport,imp}){
   const lastSaved=driveLastSaved();
   return e("div",{className:"sync-popover"},
     e("div",{className:"sync-pop-hd"},
-      e("span",{style:{fontWeight:600,color:"var(--text0)"}},"Sincronización"),
+      e("span",{style:{fontWeight:600,color:"var(--text0)"}},"💾 Datos"),
       e("button",{className:"mclose",onClick:onClose},"✕")
     ),
 
     // ── LOCAL ──
     e("div",{className:"sync-section"},
-      e("div",{className:"sync-section-title",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
-        "LOCAL",
-        dirty&&!driveConnected&&e("span",{style:{fontSize:10,color:"var(--warn-text)",fontWeight:500}},"● Cambios sin guardar")
-      ),
+      e("div",{className:"sync-section-title"},"LOCAL"),
       e("div",{className:"sync-row"},
         e("button",{className:"sync-action-btn",onClick:()=>{imp();onClose();}},"↑ Importar archivo"),
-        e("button",{className:"sync-action-btn "+(dirty?"sync-action-btn-highlight":""),
-          onClick:()=>{doExport();onClose();}},"↓ Descargar archivo")
+        e("button",{
+          className:"sync-action-btn "+(dirty&&!driveConnected?"sync-action-btn-highlight":""),
+          onClick:()=>{doExport();onClose();}
+        },"↓ Descargar archivo")
       )
     ),
 
@@ -744,23 +741,22 @@ function SyncPopover({driveConnected,syncStatus,syncMsg,autoSave,dirty,handleDri
       ),
       driveConnected
         ? e(React.Fragment,null,
-            e("div",{style:{fontSize:11,color:"var(--text2)",marginBottom:8}},
-              lastSaved?"Último guardado: "+lastSaved:"Nunca guardado"
+            e("div",{style:{fontSize:11,color:"var(--text2)",marginBottom:4}},
+              syncStatus==="saving"
+                ? "⟳ Guardando..."
+                : lastSaved
+                  ? "Último guardado: "+lastSaved
+                  : "Esperando cambios..."
             ),
-            e("div",{className:"sync-row"},
-              e("button",{className:"sync-action-btn",onClick:()=>{handleDriveSaveNow();onClose();},
-                disabled:syncStatus==="saving"},"↑ Guardar ahora"),
-              e("button",{className:"sync-action-btn",onClick:()=>{handleDriveLoad();onClose();}},"↓ Cargar desde Drive")
+            e("div",{style:{fontSize:11,color:"var(--text3)",marginBottom:12}},
+              "Autoguardado activo — guarda 4s después de cada cambio"
             ),
-            e("label",{className:"sync-toggle-row"},
-              e("input",{type:"checkbox",checked:autoSave,onChange:ev=>toggleAutoSave(ev.target.checked)}),
-              e("span",{style:{fontSize:12,color:"var(--text1)"}},"Autoguardado (cada 4s de inactividad)")
-            ),
-            syncStatus==="error"&&e("div",{className:"sync-error"},syncMsg),
             e("button",{className:"sync-disconnect-btn",onClick:()=>{handleDriveDisconnect();onClose();}},"Desconectar cuenta")
           )
         : e(React.Fragment,null,
-            e("div",{style:{fontSize:11,color:"var(--text2)",marginBottom:10}},"Conectá tu cuenta de Google para guardar y sincronizar automáticamente."),
+            e("div",{style:{fontSize:11,color:"var(--text2)",marginBottom:10}},
+              "Conectá tu cuenta para guardar y sincronizar automáticamente."
+            ),
             e("button",{className:"sync-connect-btn",onClick:()=>{handleDriveConnect();onClose();}},"Conectar Google Drive")
           )
     )
@@ -816,9 +812,9 @@ function App(){
   useEffect(()=>{applyTheme(themeId);},[themeId]);
   useEffect(()=>{setDirty(hashData(data)!==lastExp.current);},[data]);
 
-  // Autosave debounce — fires 4s after last change
+  // Autosave debounce — fires 4s after last change, always on when Drive connected
   useEffect(()=>{
-    if(!autoSave||!driveConnected||!dirty) return;
+    if(!driveConnected||!dirty) return;
     clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current=setTimeout(()=>{
       setSyncStatus("saving");
@@ -827,7 +823,7 @@ function App(){
         .catch(err=>{ setSyncStatus("error"); setSyncMsg(err.message); });
     },4000);
     return ()=>clearTimeout(autoSaveTimer.current);
-  },[data,autoSave,driveConnected]);
+  },[data,driveConnected,dirty]);
 
   const themeObj=THEMES.find(t=>t.id===themeId)||THEMES[0];
   const isDark=themeObj.isDark;
@@ -855,6 +851,7 @@ function App(){
     driveConnect((token,err)=>{
       if(err){ setSyncMsg("Error al conectar: "+err); return; }
       setDriveConnected(true); setSyncStatus("idle");
+      toggleAutoSave(true); // always autosave when connected
     });
   }
   function handleDriveDisconnect(){
@@ -936,9 +933,8 @@ function App(){
         e("button",{className:"iconbtn",onClick:()=>setSettings(true),title:"Configurar materias y tipos"},"⚙"),
         e(DatosBtn,{
           data,dirty,onExported,imp,
-          driveConnected,syncStatus,syncMsg,autoSave,showSync,
-          setShowSync,handleDriveConnect,handleDriveDisconnect,
-          handleDriveSaveNow,handleDriveLoad,toggleAutoSave
+          driveConnected,syncStatus,syncMsg,showSync,
+          setShowSync,handleDriveConnect,handleDriveDisconnect
         })
       )
     ),
