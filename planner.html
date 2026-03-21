@@ -6,6 +6,7 @@
 <title>◈ UAI Planner</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 [data-theme="hueso"]{
   --bg0:#f0ece3;--bg1:#e8e3d8;--bg2:#dfd9cc;--bg3:#d5cec0;
@@ -231,6 +232,38 @@ textarea.fi{resize:vertical;height:58px}
 .hintbtn:hover{color:var(--text2)}
 pre.hintcode{margin-top:10px;background:var(--bg1);border:1px solid var(--border);border-radius:5px;padding:13px;font-size:11px;color:var(--text2);line-height:1.6;overflow:auto}
 .errbanner{background:var(--err-bg);border-bottom:1px solid var(--err-border);padding:7px 22px;color:var(--err-text);font-size:11px}
+/* ── SYNC ── */
+.sync-wrap{display:flex;align-items:center;gap:5px;position:relative}
+.sync-cloud-btn{font-size:16px!important}
+.sync-cloud-on{color:var(--ok-text)!important;border-color:var(--ok-border)!important}
+.sync-ok{background:var(--ok-bg);border:1px solid var(--ok-border);color:var(--ok-text);padding:5px 13px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700}
+.sync-saving{background:var(--info-bg);border:1px solid var(--accent);color:var(--info-text);padding:5px 13px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px}
+.sync-pending{background:var(--warn-bg);border:1px solid var(--warn-border);color:var(--warn-text);padding:5px 13px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;animation:pulse 2s ease-in-out infinite}
+.sync-popover{position:absolute;top:calc(100% + 8px);right:0;width:300px;background:var(--bg1);border:1px solid var(--border2);border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:500;overflow:hidden}
+.sync-pop-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 10px;border-bottom:1px solid var(--border);font-size:13px}
+.sync-section{padding:12px 14px}
+.sync-section-title{font-size:9px;color:var(--text3);letter-spacing:.1em;font-weight:600;margin-bottom:8px}
+.sync-divider{height:1px;background:var(--border)}
+.sync-row{display:flex;gap:6px;margin-bottom:8px}
+.sync-action-btn{flex:1;background:var(--bg2);border:1px solid var(--border);color:var(--text1);padding:6px 8px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:11px;transition:all .12s}
+.sync-action-btn:hover{background:var(--bg3);border-color:var(--border2)}
+.sync-action-btn:disabled{opacity:.4;cursor:default}
+.sync-toggle-row{display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px}
+.sync-toggle-row input{cursor:pointer;accent-color:var(--accent)}
+.sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sync-dot-on{background:var(--ok-text)}
+.sync-dot-off{background:var(--text3)}
+.sync-connect-btn{width:100%;background:var(--info-bg);border:1px solid var(--accent);color:var(--info-text);padding:7px 12px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700}
+.sync-connect-btn:hover{opacity:.85}
+.sync-disconnect-btn{width:100%;background:transparent;border:1px solid var(--err-border);color:var(--err-text);padding:5px 12px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:11px;margin-top:4px}
+.sync-disconnect-btn:hover{background:var(--err-bg)}
+.sync-error{background:var(--err-bg);border:1px solid var(--err-border);color:var(--err-text);padding:5px 8px;border-radius:5px;font-size:10px;margin-bottom:6px}
+.periodo-sel{display:flex;align-items:center;gap:6px;margin-right:auto}
+.periodo-anio{background:var(--bg2);border:1px solid var(--border);color:var(--text1);padding:4px 8px;border-radius:5px;font-family:inherit;font-size:11px;cursor:pointer}
+.periodo-btns{display:flex;gap:3px}
+.periodo-btn{background:transparent;border:1px solid var(--border);color:var(--text3);padding:4px 8px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;transition:all .15s}
+.periodo-btn:hover{background:var(--bg2);color:var(--text1)}
+.periodo-btn-on{background:var(--info-bg);border-color:var(--accent);color:var(--info-text)}
 </style>
 </head>
 <body>
@@ -279,10 +312,13 @@ const DEFAULT_TIPOS=[
 
 const SAMPLE={
   materias:[
-    {id:"m1",nombre:"Diseño de Sistemas",    codigo:"DS301",color:"#4e47b8"},
-    {id:"m2",nombre:"Bases de Datos II",      codigo:"BD202",color:"#a83860"},
-    {id:"m3",nombre:"Ingeniería de Software", codigo:"IS401",color:"#167a58"},
-    {id:"m4",nombre:"Redes y Comunicaciones", codigo:"RC305",color:"#8f5510"},
+    {id:"m1",nombre:"Diseño de Sistemas",    codigo:"DS301",color:"#4e47b8",anio:2026,periodo:"c1"},
+    {id:"m2",nombre:"Bases de Datos II",      codigo:"BD202",color:"#a83860",anio:2026,periodo:"c1"},
+    {id:"m3",nombre:"Ingeniería de Software", codigo:"IS401",color:"#167a58",anio:2026,periodo:"c1"},
+    {id:"m4",nombre:"Redes y Comunicaciones", codigo:"RC305",color:"#8f5510",anio:2026,periodo:"c1"},
+    {id:"m5",nombre:"Algoritmos y Estructuras",codigo:"AE201",color:"#167a58",anio:2026,periodo:"c2"},
+    {id:"m6",nombre:"Sistemas Operativos",    codigo:"SO301",color:"#6b3fa0",anio:2026,periodo:"c2"},
+    {id:"m7",nombre:"Inglés Técnico",         codigo:"IT101",color:"#8f5510",anio:2026,periodo:"anual"},
   ],
   tipos:DEFAULT_TIPOS,
   tareas:[
@@ -308,8 +344,145 @@ const SAMPLE={
 
 const ESTADOS=["pendiente","en_progreso","completado"];
 const EL={pendiente:"Pendiente",en_progreso:"En progreso",completado:"Completado"};
+const PERIODOS=[{id:"c1",label:"Cuatrimestre 1"},{id:"c2",label:"Cuatrimestre 2"},{id:"anual",label:"Anual"}];
+function periodoLabel(p){return PERIODOS.find(x=>x.id===p)?.label||p;}
+function periodoTag(m){if(!m?.anio||!m?.periodo)return null;return `${periodoLabel(m.periodo)} ${m.anio}`;}
 const DAYS=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 const MONTHS=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+/* ─── GOOGLE DRIVE MODULE ─────────────────────────────────────
+   Reemplazá este valor con tu Client ID de Google Cloud Console
+   ──────────────────────────────────────────────────────────── */
+const GDRIVE_CLIENT_ID = "666209409570-6rpat6b4j910acvp9kjgeemas3gnomm5.apps.googleusercontent.com";
+const GDRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+const GDRIVE_FILE_NAME = "uai-planner.json";
+const LS_FILE_ID = "uai-planner-drive-fileid";
+
+// Estado del módulo Drive (fuera de React para persistir entre renders)
+const driveState = {
+  tokenClient: null,
+  accessToken: null,
+  tokenExpiry: null,
+  fileId: localStorage.getItem(LS_FILE_ID) || null,
+};
+
+function driveReady(){
+  return typeof google !== "undefined" && !!google.accounts;
+}
+
+function driveInitTokenClient(callback){
+  if(!driveReady()) return;
+  driveState.tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GDRIVE_CLIENT_ID,
+    scope: GDRIVE_SCOPE,
+    callback: (resp) => {
+      if(resp.error){ callback(null, resp.error); return; }
+      driveState.accessToken = resp.access_token;
+      driveState.tokenExpiry = Date.now() + (resp.expires_in - 60) * 1000;
+      callback(resp.access_token, null);
+    }
+  });
+}
+
+function driveIsConnected(){
+  return !!driveState.accessToken && Date.now() < (driveState.tokenExpiry||0);
+}
+
+function driveConnect(callback){
+  if(!driveReady()){ callback(null,"Google no cargó todavía"); return; }
+  driveInitTokenClient((token, err) => callback(token, err));
+  driveState.tokenClient.requestAccessToken({prompt:"consent"});
+}
+
+function driveConnectSilent(callback){
+  if(!driveReady()){ callback(null,"Google no disponible"); return; }
+  driveInitTokenClient((token, err) => callback(token, err));
+  driveState.tokenClient.requestAccessToken({prompt:""});
+}
+
+function driveDisconnect(){
+  if(driveState.accessToken){
+    google.accounts.oauth2.revoke(driveState.accessToken);
+  }
+  driveState.accessToken = null;
+  driveState.tokenExpiry = null;
+  driveState.fileId = null;
+  localStorage.removeItem(LS_FILE_ID);
+}
+
+async function driveSave(jsonData){
+  if(!driveIsConnected()) throw new Error("No conectado");
+  const body = JSON.stringify(jsonData, null, 2);
+  const meta = { name: GDRIVE_FILE_NAME, mimeType: "application/json" };
+
+  if(driveState.fileId){
+    // Update existing file
+    const form = new FormData();
+    form.append("metadata", new Blob([JSON.stringify({mimeType:"application/json"})],{type:"application/json"}));
+    form.append("file", new Blob([body],{type:"application/json"}));
+    const res = await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files/${driveState.fileId}?uploadType=multipart`,
+      { method:"PATCH", headers:{ Authorization:`Bearer ${driveState.accessToken}` }, body:form }
+    );
+    if(!res.ok) throw new Error("Error al actualizar en Drive: "+res.status);
+    return driveState.fileId;
+  } else {
+    // Create new file
+    const form = new FormData();
+    form.append("metadata", new Blob([JSON.stringify(meta)],{type:"application/json"}));
+    form.append("file", new Blob([body],{type:"application/json"}));
+    const res = await fetch(
+      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+      { method:"POST", headers:{ Authorization:`Bearer ${driveState.accessToken}` }, body:form }
+    );
+    if(!res.ok) throw new Error("Error al crear en Drive: "+res.status);
+    const json = await res.json();
+    driveState.fileId = json.id;
+    localStorage.setItem(LS_FILE_ID, json.id);
+    return json.id;
+  }
+}
+
+async function driveLoad(){
+  if(!driveIsConnected()) throw new Error("No conectado");
+  if(!driveState.fileId){
+    // Search for existing file
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name='${GDRIVE_FILE_NAME}' and trashed=false&fields=files(id,name,modifiedTime)`,
+      { headers:{ Authorization:`Bearer ${driveState.accessToken}` } }
+    );
+    const json = await res.json();
+    if(!json.files?.length) throw new Error("No se encontró uai-planner.json en Drive");
+    driveState.fileId = json.files[0].id;
+    localStorage.setItem(LS_FILE_ID, driveState.fileId);
+  }
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${driveState.fileId}?alt=media`,
+    { headers:{ Authorization:`Bearer ${driveState.accessToken}` } }
+  );
+  if(!res.ok) throw new Error("Error al leer desde Drive: "+res.status);
+  return res.json();
+}
+
+function driveSaveAsync(data, onStatus){
+  onStatus("saving");
+  driveSave(data)
+    .then(()=>onStatus("saved"))
+    .catch(err=>onStatus("error", err.message));
+}
+
+function driveLastSaved(){
+  const ts = localStorage.getItem("uai-planner-last-saved");
+  if(!ts) return null;
+  const diff = Math.round((Date.now()-parseInt(ts))/1000);
+  if(diff<60) return "hace "+diff+"s";
+  if(diff<3600) return "hace "+Math.round(diff/60)+"min";
+  return "hace "+Math.round(diff/3600)+"h";
+}
+
+function driveMarkSaved(){
+  localStorage.setItem("uai-planner-last-saved", Date.now().toString());
+}
 
 function daysUntil(d){const t=new Date();t.setHours(0,0,0,0);return Math.ceil((new Date(d+"T00:00:00")-t)/864e5);}
 function fd(s){const d=new Date(s+"T00:00:00");return`${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}`;}
@@ -382,15 +555,19 @@ function SettingsModal({data,setData,isDark,onClose}){
           e("button",{className:"stab "+(tab==="tipos"?"stab-a":""),onClick:()=>setTab("tipos")},"Tipos ("+data.tipos.length+")")
         ),
         tab==="materias"&&e(React.Fragment,null,
-          e("div",{className:"slist"},data.materias.map(m=>
-            e("div",{key:m.id,className:"sitem"},
+          e("div",{className:"slist"},data.materias.map(m=>{
+            const tag=periodoTag(m);
+            return e("div",{key:m.id,className:"sitem"},
               e("div",{className:"sitem-dot",style:{background:m.color}}),
-              e("span",{className:"sitem-label"},m.nombre),e("span",{className:"sitem-sub"},m.codigo),
+              e("span",{className:"sitem-label"},m.nombre),
+              e("span",{className:"sitem-sub"},m.codigo),
+              tag&&e("span",{className:"badge",style:{background:"var(--bg3)",color:"var(--text2)",fontSize:9,marginLeft:2}},tag),
+              e("span",{style:{flex:1}}),
               usedM.has(m.id)?e("span",{className:"sitem-count"},data.tareas.filter(t=>t.materiaId===m.id).length+"t"):e("span",{style:{width:24}}),
               e("button",{className:"sico",onClick:()=>{setEditM(m);setEditT(null);}},"✎"),
               usedM.has(m.id)?e("button",{className:"sico",disabled:true,style:{opacity:.3,cursor:"not-allowed"},title:"Tiene tareas"},"✕"):e("button",{className:"sico sico-del",onClick:()=>delM(m.id)},"✕")
-            )
-          )),
+            );
+          })),
           editM!==null&&e(MateriaForm,{m:editM,onSave:saveM,onCancel:()=>setEditM(null)}),
           editM===null&&e("button",{className:"sadd",onClick:()=>{setEditM({});setEditT(null);}},"+ Agregar materia")
         ),
@@ -414,15 +591,39 @@ function SettingsModal({data,setData,isDark,onClose}){
 }
 function MateriaForm({m,onSave,onCancel}){
   const isNew=!m.id;
-  const [f,setF]=useState({nombre:m.nombre||"",codigo:m.codigo||"",color:m.color||"#4e47b8",...(m.id?{id:m.id}:{})});
+  const curYear=new Date().getFullYear();
+  const years=[curYear-1,curYear,curYear+1];
+  const [f,setF]=useState({
+    nombre:m.nombre||"",codigo:m.codigo||"",color:m.color||"#4e47b8",
+    anio:m.anio||curYear,periodo:m.periodo||"c1",
+    ...(m.id?{id:m.id}:{})
+  });
   const [err,setErr]=useState("");
-  function go(){if(!f.nombre.trim()){setErr("Nombre obligatorio");return;}if(!f.codigo.trim()){setErr("Código obligatorio");return;}onSave(f);}
+  function go(){
+    if(!f.nombre.trim()){setErr("Nombre obligatorio");return;}
+    if(!f.codigo.trim()){setErr("Código obligatorio");return;}
+    onSave(f);
+  }
   return e("div",{className:"sinline"},
     err&&e("div",{className:"ferr",style:{marginBottom:8,padding:"5px 9px"}},err),
-    e("div",{style:{display:"grid",gridTemplateColumns:"1fr 78px auto",gap:8,marginBottom:10}},
+    e("div",{style:{display:"grid",gridTemplateColumns:"1fr 78px auto",gap:8,marginBottom:8}},
       e("input",{className:"fi",type:"text",placeholder:"Nombre de la materia",value:f.nombre,onChange:ev=>setF(x=>({...x,nombre:ev.target.value})),autoFocus:true}),
       e("input",{className:"fi",type:"text",placeholder:"Código",value:f.codigo,onChange:ev=>setF(x=>({...x,codigo:ev.target.value}))}),
       e("input",{type:"color",value:f.color,title:"Color",onChange:ev=>setF(x=>({...x,color:ev.target.value}))})
+    ),
+    e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}},
+      e("div",{className:"fg",style:{marginBottom:0}},
+        e("label",{className:"fl"},"AÑO *"),
+        e("select",{className:"fi",value:f.anio,onChange:ev=>setF(x=>({...x,anio:parseInt(ev.target.value)}))},
+          years.map(y=>e("option",{key:y,value:y},y))
+        )
+      ),
+      e("div",{className:"fg",style:{marginBottom:0}},
+        e("label",{className:"fl"},"PERÍODO *"),
+        e("select",{className:"fi",value:f.periodo,onChange:ev=>setF(x=>({...x,periodo:ev.target.value}))},
+          PERIODOS.map(p=>e("option",{key:p.id,value:p.id},p.label))
+        )
+      )
     ),
     e("div",{style:{display:"flex",gap:6,justifyContent:"flex-end"}},
       e("button",{className:"cancbtn",onClick:onCancel},"Cancelar"),
@@ -470,6 +671,122 @@ function ChecklistEditor({items,onChange}){
   );
 }
 
+/* ─── SYNC BAR ── */
+function SyncBar({data,dirty,onExported,imp,driveConnected,syncStatus,syncMsg,autoSave,showSync,setShowSync,handleDriveConnect,handleDriveDisconnect,handleDriveSaveNow,handleDriveLoad,toggleAutoSave}){
+  const [flash,setFlash]=useState(false);
+
+  function doExport(){
+    const ts=new Date().toISOString().slice(0,16).replace("T","_").replace(/:/g,"-");
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=`uai-planner_${ts}.json`;a.click();
+    URL.revokeObjectURL(url);
+    setFlash(true);onExported();setTimeout(()=>setFlash(false),2000);
+  }
+
+  // Sync indicator label + style
+  let syncEl;
+  if(!driveConnected){
+    if(flash)
+      syncEl=e("button",{className:"exp-saved",disabled:true},"✓ Descargado");
+    else if(dirty)
+      syncEl=e("button",{className:"exp-dirty",onClick:doExport,title:"Cambios sin guardar"},"↓ Exportar •");
+    else
+      syncEl=e("button",{className:"exp-clean",onClick:doExport},"↓ Exportar");
+  } else {
+    if(syncStatus==="saving")
+      syncEl=e("button",{className:"sync-saving",onClick:()=>setShowSync(!showSync)},"⟳ Guardando...");
+    else if(syncStatus==="saved"||(!dirty&&syncStatus!=="error"))
+      syncEl=e("button",{className:"sync-ok",onClick:()=>setShowSync(!showSync)},"✓ Sincronizado");
+    else if(dirty&&autoSave)
+      syncEl=e("button",{className:"sync-pending",onClick:()=>setShowSync(!showSync)},"● Sin guardar");
+    else
+      syncEl=e("button",{className:"sync-pending",onClick:()=>setShowSync(!showSync)},"● Sin guardar");
+  }
+
+  return e("div",{className:"sync-wrap"},
+    e("button",{className:"ibtn",onClick:imp},"↑ Importar"),
+    syncEl,
+    e("button",{className:"iconbtn sync-cloud-btn "+(driveConnected?"sync-cloud-on":""),
+      onClick:()=>setShowSync(!showSync),title:"Sincronización en la nube"},"☁"),
+    showSync&&e(SyncPopover,{
+      driveConnected,syncStatus,syncMsg,autoSave,
+      handleDriveConnect,handleDriveDisconnect,handleDriveSaveNow,handleDriveLoad,
+      toggleAutoSave,onClose:()=>setShowSync(false),doExport,imp
+    })
+  );
+}
+
+function SyncPopover({driveConnected,syncStatus,syncMsg,autoSave,handleDriveConnect,handleDriveDisconnect,handleDriveSaveNow,handleDriveLoad,toggleAutoSave,onClose,doExport,imp}){
+  const lastSaved=driveLastSaved();
+  return e("div",{className:"sync-popover"},
+    e("div",{className:"sync-pop-hd"},
+      e("span",{style:{fontWeight:600,color:"var(--text0)"}},"Sincronización"),
+      e("button",{className:"mclose",onClick:onClose},"✕")
+    ),
+
+    // ── LOCAL ──
+    e("div",{className:"sync-section"},
+      e("div",{className:"sync-section-title"},"LOCAL"),
+      e("div",{className:"sync-row"},
+        e("button",{className:"sync-action-btn",onClick:()=>{imp();onClose();}},"↑ Importar archivo"),
+        e("button",{className:"sync-action-btn",onClick:()=>{doExport();onClose();}},"↓ Descargar archivo")
+      )
+    ),
+
+    e("div",{className:"sync-divider"}),
+
+    // ── GOOGLE DRIVE ──
+    e("div",{className:"sync-section"},
+      e("div",{className:"sync-section-title",style:{display:"flex",alignItems:"center",gap:6}},
+        "☁ GOOGLE DRIVE",
+        e("span",{className:"sync-dot "+(driveConnected?"sync-dot-on":"sync-dot-off")})
+      ),
+      driveConnected
+        ? e(React.Fragment,null,
+            e("div",{style:{fontSize:11,color:"var(--text2)",marginBottom:8}},
+              lastSaved?"Último guardado: "+lastSaved:"Nunca guardado"
+            ),
+            e("div",{className:"sync-row"},
+              e("button",{className:"sync-action-btn",onClick:()=>{handleDriveSaveNow();onClose();},
+                disabled:syncStatus==="saving"},"↑ Guardar ahora"),
+              e("button",{className:"sync-action-btn",onClick:()=>{handleDriveLoad();onClose();}},"↓ Cargar desde Drive")
+            ),
+            e("label",{className:"sync-toggle-row"},
+              e("input",{type:"checkbox",checked:autoSave,onChange:ev=>toggleAutoSave(ev.target.checked)}),
+              e("span",{style:{fontSize:12,color:"var(--text1)"}},"Autoguardado (cada 4s de inactividad)")
+            ),
+            syncStatus==="error"&&e("div",{className:"sync-error"},syncMsg),
+            e("button",{className:"sync-disconnect-btn",onClick:()=>{handleDriveDisconnect();onClose();}},"Desconectar cuenta")
+          )
+        : e(React.Fragment,null,
+            e("div",{style:{fontSize:11,color:"var(--text2)",marginBottom:10}},"Conectá tu cuenta de Google para guardar y sincronizar automáticamente."),
+            e("button",{className:"sync-connect-btn",onClick:()=>{handleDriveConnect();onClose();}},"Conectar Google Drive")
+          )
+    )
+  );
+}
+
+/* ─── PERIODO SELECTOR ── */
+function PeriodoSelector({anios,fAnio,fPeriodos,setFAnio,togglePeriodo}){
+  return e("div",{className:"periodo-sel"},
+    e("select",{className:"periodo-anio",value:fAnio,onChange:ev=>setFAnio(ev.target.value)},
+      e("option",{value:"all"},"Todos los años"),
+      anios.map(a=>e("option",{key:a,value:a},a))
+    ),
+    e("div",{className:"periodo-btns"},
+      PERIODOS.map(p=>{
+        const active=fPeriodos.includes(p.id);
+        return e("button",{key:p.id,
+          className:"periodo-btn "+(active?"periodo-btn-on":""),
+          onClick:()=>togglePeriodo(p.id),
+          title:p.label
+        },p.id==="c1"?"C1":p.id==="c2"?"C2":"Anual");
+      })
+    )
+  );
+}
+
 /* ─── APP ── */
 function App(){
   const saved=localStorage.getItem("uai-theme")||"hueso";
@@ -483,12 +800,34 @@ function App(){
   const [selId,setSelId]=useState(null);
   const [form,setForm]=useState(null);
   const [settings,setSettings]=useState(false);
+  const [fAnio,setFAnio]=useState("all");
+  const [fPeriodos,setFPeriodos]=useState(["c1","c2","anual"]);
+  // Drive state
+  const [driveConnected,setDriveConnected]=useState(driveIsConnected());
+  const [syncStatus,setSyncStatus]=useState("idle"); // idle | saving | saved | error
+  const [syncMsg,setSyncMsg]=useState("");
+  const [autoSave,setAutoSave]=useState(()=>localStorage.getItem("uai-autosave")==="true");
+  const [showSync,setShowSync]=useState(false);
+  const autoSaveTimer=useRef(null);
   const [impErr,setImpErr]=useState(null);
   const lastExp=useRef(hashData(SAMPLE));
   const [dirty,setDirty]=useState(false);
 
   useEffect(()=>{applyTheme(themeId);},[themeId]);
   useEffect(()=>{setDirty(hashData(data)!==lastExp.current);},[data]);
+
+  // Autosave debounce — fires 4s after last change
+  useEffect(()=>{
+    if(!autoSave||!driveConnected||!dirty) return;
+    clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current=setTimeout(()=>{
+      setSyncStatus("saving");
+      driveSave(data)
+        .then(()=>{ driveMarkSaved(); setSyncStatus("saved"); setDirty(false); lastExp.current=hashData(data); })
+        .catch(err=>{ setSyncStatus("error"); setSyncMsg(err.message); });
+    },4000);
+    return ()=>clearTimeout(autoSaveTimer.current);
+  },[data,autoSave,driveConnected]);
 
   const themeObj=THEMES.find(t=>t.id===themeId)||THEMES[0];
   const isDark=themeObj.isDark;
@@ -512,6 +851,35 @@ function App(){
     setForm(null);if(t.id)setSelId(t.id);
   }
   function del(id){setData(d=>({...d,tareas:d.tareas.filter(t=>t.id!==id)}));setSelId(null);}
+  function handleDriveConnect(){
+    driveConnect((token,err)=>{
+      if(err){ setSyncMsg("Error al conectar: "+err); return; }
+      setDriveConnected(true); setSyncStatus("idle");
+    });
+  }
+  function handleDriveDisconnect(){
+    driveDisconnect(); setDriveConnected(false); setSyncStatus("idle");
+  }
+  function handleDriveSaveNow(){
+    setSyncStatus("saving");
+    driveSave(data)
+      .then(()=>{ driveMarkSaved(); setSyncStatus("saved"); setDirty(false); lastExp.current=hashData(data); })
+      .catch(err=>{ setSyncStatus("error"); setSyncMsg(err.message); });
+  }
+  async function handleDriveLoad(){
+    try{
+      setSyncStatus("saving");
+      const p=await driveLoad();
+      if(!p.materias||!p.tareas) throw new Error("Formato inválido");
+      if(!p.tipos) p.tipos=DEFAULT_TIPOS;
+      p.tareas=p.tareas.map(t=>({items:[],...t}));
+      setData(p); lastExp.current=hashData(p); setDirty(false);
+      setImpErr(null); setSyncStatus("saved");
+    }catch(err){ setImpErr(err.message); setSyncStatus("error"); setSyncMsg(err.message); }
+  }
+  function toggleAutoSave(v){
+    setAutoSave(v); localStorage.setItem("uai-autosave",v?"true":"false");
+  }
   function imp(){
     const inp=document.createElement("input");inp.type="file";inp.accept=".json";
     inp.onchange=ev=>{
@@ -530,12 +898,34 @@ function App(){
     inp.click();
   }
   function onExported(){lastExp.current=hashData(data);setDirty(false);}
-  const filtered=useMemo(()=>data.tareas.filter(t=>(fm==="all"||t.materiaId===fm)&&(ft==="all"||t.tipo===ft)),[data.tareas,fm,ft]);
+  // materias visibles según filtro de año/período
+  const materiasFiltradas=useMemo(()=>data.materias.filter(m=>{
+    if(fAnio!=="all"&&m.anio!==parseInt(fAnio))return false;
+    if(!fPeriodos.includes(m.periodo||"c1"))return false;
+    return true;
+  }),[data.materias,fAnio,fPeriodos]);
+  const matIdsFiltradas=useMemo(()=>new Set(materiasFiltradas.map(m=>m.id)),[materiasFiltradas]);
+
+  const filtered=useMemo(()=>data.tareas.filter(t=>
+    matIdsFiltradas.has(t.materiaId)&&
+    (fm==="all"||t.materiaId===fm)&&
+    (ft==="all"||t.tipo===ft)
+  ),[data.tareas,matIdsFiltradas,fm,ft]);
+
+  // años disponibles en los datos
+  const aniosDisponibles=useMemo(()=>[...new Set(data.materias.map(m=>m.anio).filter(Boolean))].sort(),[data.materias]);
+
+  function togglePeriodo(pid){
+    setFPeriodos(prev=>prev.includes(pid)
+      ?prev.length>1?prev.filter(x=>x!==pid):prev  // no dejar vacío
+      :[...prev,pid]
+    );
+  }
 
   return e("div",{className:"app"},
     e("header",{className:"hdr"},
       e("span",{className:"logo"},"◈ UAI Planner"),
-      e("span",{className:"subtitle"},"Cuatrimestre 2026-1"),
+      e(PeriodoSelector,{anios:aniosDisponibles,fAnio,fPeriodos,setFAnio,togglePeriodo}),
       e("nav",{className:"nav"},
         [["backlog","≡ Backlog"],["kanban","⬡ Kanban"],["calendar","◷ Calendario"]].map(([v,l])=>
           e("button",{key:v,className:"nb "+(view===v?"nba":""),onClick:()=>setView(v)},l)
@@ -544,15 +934,19 @@ function App(){
       e("div",{className:"hdr-btns"},
         e(ThemeSwitcher,{current:themeId,onChange:setThemeId}),
         e("button",{className:"iconbtn",onClick:()=>setSettings(true),title:"Configurar materias y tipos"},"⚙"),
-        e("button",{className:"ibtn",onClick:imp},"↑ Importar"),
-        e(ExportBtn,{data,dirty,onExported})
+        e(SyncBar,{
+          data,dirty,onExported,imp,
+          driveConnected,syncStatus,syncMsg,autoSave,showSync,
+          setShowSync,handleDriveConnect,handleDriveDisconnect,
+          handleDriveSaveNow,handleDriveLoad,toggleAutoSave
+        })
       )
     ),
     impErr&&e("div",{className:"errbanner"},"⚠ "+impErr),
     e("div",{className:"fbar"},
       e("select",{value:fm,onChange:ev=>setFm(ev.target.value)},
         e("option",{value:"all"},"Todas las materias"),
-        data.materias.map(m=>e("option",{key:m.id,value:m.id},m.nombre))
+        materiasFiltradas.map(m=>e("option",{key:m.id,value:m.id},m.nombre+(periodoTag(m)?" — "+periodoTag(m):"")))
       ),
       e("select",{value:ft,onChange:ev=>setFt(ev.target.value)},
         e("option",{value:"all"},"Todos los tipos"),
@@ -594,7 +988,7 @@ function Backlog({tareas,mmap,tmap,isDark,move,onSel}){
       e("span",{style:{fontSize:15,width:22,textAlign:"center",flexShrink:0,marginTop:1}},tp.icon),
       e("div",{className:"trc"},
         e("span",{className:"trt",style:{textDecoration:t.estado==="completado"?"line-through":"none"}},t.titulo),
-        e("span",{className:"trm"},m?.codigo||""),
+        e("span",{className:"trm"},(m?.nombre||"")+(periodoTag(m)?" — "+periodoTag(m):""+(m?.codigo?" ("+m.codigo+")":""))),
         pct!==null&&e(ProgBar,{pct,isDark,size:"sm",showFrac:`${doneCount}/${items.length}`})
       ),
       e("div",{className:"trmt"},
@@ -649,7 +1043,7 @@ function Kanban({tareas,mmap,tmap,isDark,move,onSel}){
             e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}},
               e("div",{style:{display:"flex",alignItems:"center",gap:5}},
                 e("div",{style:{width:7,height:7,borderRadius:"50%",background:m?.color||"var(--border2)"}}),
-                e("span",{style:{fontSize:10,color:"var(--text2)"}},m?.codigo||"")
+                e("span",{style:{fontSize:10,color:"var(--text2)"}},m?(m.nombre+(periodoTag(m)?" · "+periodoTag(m):"")):"")  
               ),
               u&&e("span",{style:{fontSize:10,color:u}},fd(t.fechaLimite))
             ),
@@ -822,7 +1216,7 @@ function FormModal({task,materias,tipos,isDark,onSave,onClose}){
         e("div",{className:"fg"},e("label",{className:"fl"},"TÍTULO *"),e("input",{className:"fi",type:"text",value:f.titulo,onChange:ev=>s("titulo",ev.target.value),placeholder:"Ej: TP2 - Diagrama de secuencia",autoFocus:true})),
         e("div",{className:"fg"},e("label",{className:"fl"},"DESCRIPCIÓN"),e("textarea",{className:"fi",value:f.descripcion,onChange:ev=>s("descripcion",ev.target.value),placeholder:"Descripción opcional..."})),
         e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
-          e("div",{className:"fg"},e("label",{className:"fl"},"MATERIA *"),e("select",{className:"fi",value:f.materiaId,onChange:ev=>s("materiaId",ev.target.value)},materias.map(m=>e("option",{key:m.id,value:m.id},m.nombre)))),
+          e("div",{className:"fg"},e("label",{className:"fl"},"MATERIA *"),e("select",{className:"fi",value:f.materiaId,onChange:ev=>s("materiaId",ev.target.value)},materias.map(m=>e("option",{key:m.id,value:m.id},m.nombre+(periodoTag(m)?" — "+periodoTag(m):"") )))),
           e("div",{className:"fg"},e("label",{className:"fl"},"TIPO"),e("select",{className:"fi",value:f.tipo,onChange:ev=>s("tipo",ev.target.value)},tipos.map(t=>e("option",{key:t.id,value:t.id},t.icon+" "+t.label))))
         ),
         e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}},
@@ -849,7 +1243,7 @@ function FormModal({task,materias,tipos,isDark,onSave,onClose}){
 function SchemaHint(){
   const [open,setOpen]=useState(false);
   const schema=`{
-  "materias":  [{ "id","nombre","codigo","color":"#hex" }],
+  "materias":  [{ "id","nombre","codigo","color":"#hex","anio":2026,"periodo":"c1|c2|anual" }],
   "tipos":     [{ "id","label","icon":"emoji","bg":"#hex","accent":"#hex" }],
   "tareas": [{
     "id","titulo","descripcion",
