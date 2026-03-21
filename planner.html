@@ -678,8 +678,8 @@ function ChecklistEditor({items,onChange}){
   );
 }
 
-/* ─── SYNC BAR ── */
-function SyncBar({data,dirty,onExported,imp,driveConnected,syncStatus,syncMsg,autoSave,showSync,setShowSync,handleDriveConnect,handleDriveDisconnect,handleDriveSaveNow,handleDriveLoad,toggleAutoSave}){
+/* ─── DATOS BUTTON ── */
+function DatosBtn({data,dirty,onExported,imp,driveConnected,syncStatus,syncMsg,autoSave,showSync,setShowSync,handleDriveConnect,handleDriveDisconnect,handleDriveSaveNow,handleDriveLoad,toggleAutoSave}){
 
   function doExport(){
     const ts=new Date().toISOString().slice(0,16).replace("T","_").replace(/:/g,"-");
