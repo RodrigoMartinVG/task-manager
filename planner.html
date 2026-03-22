@@ -1213,26 +1213,11 @@ function App(){
         });
     });
   }
-  const [disconnectModal,setDisconnectModal]=useState(false);
   const [resetModal,setResetModal]=useState(false);
-  const [resetConfirm2,setResetConfirm2]=useState(false); // second confirm for total reset
+  const [resetConfirm,setResetConfirm]=useState(null);
 
-  function handleDriveDisconnect(){ setDisconnectModal(true); }
-
-  function doDisconnectKeep(){
-    // Revoke token, keep data as anonymous local
-    driveDisconnect();
-    setDriveConnected(false); setSyncStatus("idle");
-    // Move data to anonymous key
-    saveToLS(data, null);
-    setUserEmail(null);
-    localStorage.removeItem(LS_EMAIL_KEY);
-    localStorage.setItem(LS_MODE_KEY,"local");
-    setAppMode("local");
-    setDisconnectModal(false);
-  }
-  function doDisconnectClean(){
-    // Revoke token, clear local data, back to welcome
+  function handleDriveDisconnect(){
+    // Disconnect: revoke token, clear local data, back to welcome — no questions
     driveDisconnect();
     clearLS(userEmail);
     setDriveConnected(false); setSyncStatus("idle");
@@ -1241,25 +1226,11 @@ function App(){
     localStorage.setItem(LS_MODE_KEY,"welcome");
     setAppMode("welcome");
     setData(EMPTY_DATA);
-    setDisconnectModal(false);
   }
 
-  function doResetLocalOnly(){
-    // Clear local storage, disconnect if connected, back to welcome
-    clearLS(userEmail);
-    clearLS(null);
-    if(driveConnected){ driveDisconnect(); setDriveConnected(false); }
-    setUserEmail(null);
-    localStorage.removeItem(LS_EMAIL_KEY);
-    localStorage.setItem(LS_MODE_KEY,"welcome");
-    setAppMode("welcome");
-    setData(EMPTY_DATA);
-    setResetModal(false);
-  }
-  async function doResetAll(){
-    // Clear local + delete Drive file
-    clearLS(userEmail);
-    clearLS(null);
+  async function doResetEmpty(){
+    // Clear local + Drive file, stay in planner with empty data
+    clearLS(userEmail); clearLS(null);
     if(driveConnected&&driveState.fileId){
       try{
         await fetch(`https://www.googleapis.com/drive/v3/files/${driveState.fileId}`,
@@ -1267,16 +1238,29 @@ function App(){
         driveState.fileId=null;
         localStorage.removeItem(LS_FILE_ID);
       }catch(e){}
-      driveDisconnect();
-      setDriveConnected(false);
     }
-    setUserEmail(null);
-    localStorage.removeItem(LS_EMAIL_KEY);
-    localStorage.setItem(LS_MODE_KEY,"welcome");
-    setAppMode("welcome");
     setData(EMPTY_DATA);
-    setResetModal(false);
-    setResetConfirm2(false);
+    lastExp.current=hashData(EMPTY_DATA);
+    setDirty(false);
+    setResetModal(false); setResetConfirm(null);
+  }
+
+  function doResetSample(){
+    // Reset to sample data, stay in planner
+    clearLS(userEmail); clearLS(null);
+    if(driveConnected&&driveState.fileId){
+      try{
+        fetch(`https://www.googleapis.com/drive/v3/files/${driveState.fileId}`,
+          {method:"DELETE",headers:{Authorization:`Bearer ${driveState.accessToken}`}});
+        driveState.fileId=null;
+        localStorage.removeItem(LS_FILE_ID);
+      }catch(e){}
+    }
+    setData(SAMPLE);
+    setIsDemo(false);
+    lastExp.current=hashData(SAMPLE);
+    setDirty(false);
+    setResetModal(false); setResetConfirm(null);
   }
   function handleDriveSaveNow(){
     setSyncStatus("saving");
@@ -1480,18 +1464,13 @@ function App(){
       },
       onClose:()=>setDriveConflict(null)
     }),
-    disconnectModal&&e(DisconnectModal,{
-      driveConnected,userEmail,
-      onKeep:doDisconnectKeep,
-      onClean:doDisconnectClean,
-      onClose:()=>setDisconnectModal(false)
-    }),
+
     resetModal&&e(ResetModal,{
       driveConnected,
-      resetConfirm2,setResetConfirm2,
-      onResetLocal:doResetLocalOnly,
-      onResetAll:doResetAll,
-      onClose:()=>{setResetModal(false);setResetConfirm2(false);}
+      resetConfirm,setResetConfirm,
+      onResetEmpty:doResetEmpty,
+      onResetSample:doResetSample,
+      onClose:()=>{setResetModal(false);setResetConfirm(null);}
     }),
     pomoContext&&e(PomoContextPopup,{materia:pomoContext,tareas:data.tareas,tipos,onStart:handlePomoContextStart,onClose:()=>setPomoContext(null)}),
     manualSession&&e(ManualSessionModal,{materia:manualSession,tareas:data.tareas,onSave:saveManualSession,onClose:()=>setManualSession(null)}),
@@ -2481,94 +2460,69 @@ function WelcomeScreen({onLocal,onDrive,onDemo,expiredMsg}){
   );
 }
 
-/* ─── DISCONNECT MODAL ── */
-function DisconnectModal({driveConnected,userEmail,onKeep,onClean,onClose}){
-  return e("div",{className:"ov",onClick:onClose},
-    e("div",{className:"mod",style:{maxWidth:420},onClick:ev=>ev.stopPropagation()},
-      e("div",{className:"mhd"},
-        e("span",{style:{fontSize:20}},"⏏"),
-        e("span",{className:"mtit"},"Desconectar Google Drive"),
-        e("button",{className:"mclose",onClick:onClose},"✕")
-      ),
-      e("div",{className:"mbody"},
-        userEmail&&e("div",{style:{fontSize:12,color:"var(--text2)",marginBottom:16}},"Conectado como: "+userEmail),
-        e("p",{style:{fontSize:13,color:"var(--text1)",lineHeight:1.6,marginBottom:18}},
-          "¿Qué hacemos con tus datos locales?"
-        ),
-        e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
-          e("button",{onClick:onKeep,style:{
-            background:"var(--bg2)",border:"1px solid var(--border2)",color:"var(--text0)",
-            padding:"12px 16px",borderRadius:7,cursor:"pointer",fontFamily:"inherit",
-            fontSize:13,textAlign:"left",transition:"all .15s"}},
-            e("div",{style:{fontWeight:600,marginBottom:3}},"💻 Desconectar y conservar datos locales"),
-            e("div",{style:{fontSize:11,color:"var(--text2)"}},"El archivo en Drive queda intacto. Seguís viendo tus datos en modo local.")
-          ),
-          e("button",{onClick:onClean,style:{
-            background:"var(--bg2)",border:"1px solid var(--border2)",color:"var(--text0)",
-            padding:"12px 16px",borderRadius:7,cursor:"pointer",fontFamily:"inherit",
-            fontSize:13,textAlign:"left",transition:"all .15s"}},
-            e("div",{style:{fontWeight:600,marginBottom:3}},"🗑 Desconectar y limpiar datos locales"),
-            e("div",{style:{fontSize:11,color:"var(--text2)"}},"El archivo en Drive queda intacto. Los datos se borran de este dispositivo.")
-          )
-        )
-      )
-    )
-  );
-}
 
 /* ─── RESET MODAL ── */
-function ResetModal({driveConnected,resetConfirm2,setResetConfirm2,onResetLocal,onResetAll,onClose}){
-  if(resetConfirm2){
+function ResetModal({driveConnected,resetConfirm,setResetConfirm,onResetEmpty,onResetSample,onClose}){
+  // resetConfirm: null | "empty" | "sample"
+  if(resetConfirm){
+    const isEmpty=resetConfirm==="empty";
     return e("div",{className:"ov",onClick:onClose},
-      e("div",{className:"mod",style:{maxWidth:380},onClick:ev=>ev.stopPropagation()},
+      e("div",{className:"mod",style:{maxWidth:360},onClick:ev=>ev.stopPropagation()},
         e("div",{className:"mhd"},
           e("span",{style:{fontSize:20}},"⚠"),
-          e("span",{className:"mtit"},"¿Confirmar borrado total?"),
+          e("span",{className:"mtit"},"¿Confirmar reseteo?"),
           e("button",{className:"mclose",onClick:onClose},"✕")
         ),
         e("div",{className:"mbody"},
-          e("p",{style:{fontSize:13,color:"var(--err-text)",lineHeight:1.6,marginBottom:18}},"Esto borrará tus datos locales Y el archivo en Google Drive. Esta acción no se puede deshacer."),
+          e("p",{style:{fontSize:13,color:"var(--err-text)",lineHeight:1.6,marginBottom:18}},
+            isEmpty
+              ? (driveConnected
+                  ? "Esto borrará los datos locales y el archivo en Drive. No se puede deshacer."
+                  : "Esto borrará todos los datos locales. No se puede deshacer.")
+              : (driveConnected
+                  ? "Se reemplazarán los datos locales y el archivo en Drive con los datos de ejemplo. No se puede deshacer."
+                  : "Se reemplazarán todos los datos locales con los datos de ejemplo. No se puede deshacer.")
+          ),
           e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},
             e("button",{className:"cancbtn",onClick:onClose},"Cancelar"),
-            e("button",{className:"delbtn",style:{width:"auto",padding:"6px 16px"},onClick:onResetAll},"Sí, borrar todo")
+            e("button",{className:"delbtn",style:{width:"auto",padding:"6px 16px"},
+              onClick:isEmpty?onResetEmpty:onResetSample},"Sí, confirmar")
           )
         )
       )
     );
   }
+
   return e("div",{className:"ov",onClick:onClose},
-    e("div",{className:"mod",style:{maxWidth:420},onClick:ev=>ev.stopPropagation()},
+    e("div",{className:"mod",style:{maxWidth:400},onClick:ev=>ev.stopPropagation()},
       e("div",{className:"mhd"},
         e("span",{style:{fontSize:20}},"🗑"),
         e("span",{className:"mtit"},"Resetear datos"),
         e("button",{className:"mclose",onClick:onClose},"✕")
       ),
       e("div",{className:"mbody"},
-        driveConnected
-          ? e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
-              e("button",{onClick:()=>setResetConfirm2(true),style:{
-                background:"var(--err-bg)",border:"1px solid var(--err-border)",color:"var(--err-text)",
-                padding:"12px 16px",borderRadius:7,cursor:"pointer",fontFamily:"inherit",
-                fontSize:13,textAlign:"left",transition:"all .15s"}},
-                e("div",{style:{fontWeight:600,marginBottom:3}},"🗑 Resetear todo — local y Drive"),
-                e("div",{style:{fontSize:11}},"Borra los datos locales y el archivo en Drive. La app queda como nueva.")
-              ),
-              e("button",{onClick:onResetLocal,style:{
-                background:"var(--bg2)",border:"1px solid var(--border2)",color:"var(--text0)",
-                padding:"12px 16px",borderRadius:7,cursor:"pointer",fontFamily:"inherit",
-                fontSize:13,textAlign:"left",transition:"all .15s"}},
-                e("div",{style:{fontWeight:600,marginBottom:3}},"⏏ Desconectar Drive y resetear local"),
-                e("div",{style:{fontSize:11,color:"var(--text2)"}},"El archivo en Drive queda intacto. Los datos locales se borran.")
-              )
-            )
-          : e("div",null,
-              e("p",{style:{fontSize:13,color:"var(--text1)",lineHeight:1.6,marginBottom:18}},
-                "¿Resetear todos los datos? Esto borra todos los datos locales. No se puede deshacer."),
-              e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},
-                e("button",{className:"cancbtn",onClick:onClose},"Cancelar"),
-                e("button",{className:"delbtn",style:{width:"auto",padding:"6px 16px"},onClick:onResetLocal},"🗑 Sí, resetear")
-              )
-            )
+        driveConnected&&e("div",{style:{fontSize:11,color:"var(--text2)",marginBottom:14,
+          padding:"8px 10px",background:"var(--bg2)",borderRadius:5}},
+          "⚠ Al resetear también se borrará el archivo en Google Drive."
+        ),
+        e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+          e("button",{
+            onClick:()=>setResetConfirm("empty"),
+            style:{background:"var(--err-bg)",border:"1px solid var(--err-border)",
+              color:"var(--err-text)",padding:"12px 16px",borderRadius:7,cursor:"pointer",
+              fontFamily:"inherit",fontSize:13,textAlign:"left"}},
+            e("div",{style:{fontWeight:600,marginBottom:3}},"🗑 Datos vacíos"),
+            e("div",{style:{fontSize:11}},"La app queda en blanco, sin ningún dato.")
+          ),
+          e("button",{
+            onClick:()=>setResetConfirm("sample"),
+            style:{background:"var(--bg2)",border:"1px solid var(--border2)",
+              color:"var(--text0)",padding:"12px 16px",borderRadius:7,cursor:"pointer",
+              fontFamily:"inherit",fontSize:13,textAlign:"left"}},
+            e("div",{style:{fontWeight:600,marginBottom:3}},"🎲 Cargar datos de ejemplo"),
+            e("div",{style:{fontSize:11,color:"var(--text2)"}},"Útil para explorar la app.")
+          )
+        )
       )
     )
   );
