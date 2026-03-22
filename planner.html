@@ -237,6 +237,10 @@ textarea.fi{resize:vertical;height:58px}
 .hintbtn:hover{color:var(--text2)}
 pre.hintcode{margin-top:10px;background:var(--bg1);border:1px solid var(--border);border-radius:5px;padding:13px;font-size:11px;color:var(--text2);line-height:1.6;overflow:auto}
 .errbanner{background:var(--err-bg);border-bottom:1px solid var(--err-border);padding:7px 22px;color:var(--err-text);font-size:11px}
+.mode-indicator{display:flex;align-items:center;gap:6px;padding:3px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:10px}
+.mode-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.mode-dot-drive{background:var(--ok-text)}
+.mode-dot-local{background:var(--text3)}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--warn-bg);border:1px solid var(--warn-border);color:var(--warn-text);padding:10px 16px;border-radius:8px;font-size:12px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:900;animation:toast-in .25s ease;white-space:nowrap}
 @keyframes toast-in{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 .toast-dismiss{background:transparent;border:none;color:var(--warn-text);cursor:pointer;font-family:inherit;font-size:11px;padding:2px 6px;border-radius:4px;border:1px solid var(--warn-border);opacity:.8;transition:opacity .12s}
@@ -327,6 +331,13 @@ pre.hintcode{margin-top:10px;background:var(--bg1);border:1px solid var(--border
 .datos-badge-dirty{background:var(--warn-bg);color:var(--warn-text);animation:pulse 2s ease-in-out infinite}
 .datos-badge-saving{background:var(--info-bg);color:var(--info-text)}
 .sync-action-btn-highlight{background:var(--warn-bg)!important;border-color:var(--warn-border)!important;color:var(--warn-text)!important;font-weight:700}
+.cfg-item{display:flex;align-items:center;gap:10px;width:100%;background:transparent;border:none;color:var(--text0);padding:9px 10px;border-radius:5px;cursor:pointer;fontFamily:inherit;font-size:13px;transition:background .12s;text-align:left}
+.cfg-item:hover{background:var(--bg2)}
+.cfg-item-on{background:var(--info-bg)!important;color:var(--info-text)}
+.cfg-sub-hd{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border)}
+.cfg-back{background:transparent;border:none;color:var(--accent);cursor:pointer;font-family:inherit;font-size:12px;padding:0}
+.cfg-sub-title{font-size:13px;font-weight:600;color:var(--text0)}
+.cfg-sub-body{padding:8px}
 .periodo-sel{display:flex;align-items:center;position:relative}
 .periodo-trigger{font-size:12px!important;display:flex;align-items:center;gap:3px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .periodo-popover{position:absolute;top:calc(100% + 8px);left:0;width:200px;background:var(--bg1);border:1px solid var(--border2);border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:500;padding:8px}
@@ -588,6 +599,48 @@ function driveMarkSaved(){
   localStorage.setItem("uai-planner-last-saved", Date.now().toString());
 }
 
+/* ─── DATA VERSION & PERSISTENCE ── */
+const DATA_VERSION="1";
+const LS_EMAIL_KEY="uai-planner-email";
+const LS_MODE_KEY="uai-planner-mode"; // "local" | "drive"
+
+function lsDataKey(email){
+  return email?"uai-planner-data-v"+DATA_VERSION+"-"+email:"uai-planner-data-v"+DATA_VERSION;
+}
+
+function saveToLS(data, email){
+  try{
+    const key=lsDataKey(email);
+    localStorage.setItem(key,JSON.stringify({version:DATA_VERSION,...data}));
+  }catch(e){console.warn("localStorage save failed:",e);}
+}
+
+function loadFromLS(email){
+  try{
+    const key=lsDataKey(email);
+    const raw=localStorage.getItem(key);
+    if(!raw) return null;
+    const parsed=JSON.parse(raw);
+    if(parsed.version!==DATA_VERSION) return null;
+    const {version,...data}=parsed;
+    return data;
+  }catch(e){return null;}
+}
+
+function clearLS(email){
+  try{ localStorage.removeItem(lsDataKey(email)); }catch(e){}
+}
+
+function isSampleData(data){
+  return data?.tareas?.[0]?.id==="t1";
+}
+
+function isEmptyData(data){
+  return !data?.tareas?.length&&!data?.materias?.length;
+}
+
+const EMPTY_DATA={materias:[],tipos:DEFAULT_TIPOS,tareas:[],sesiones:[]};
+
 function daysUntil(d){const t=new Date();t.setHours(0,0,0,0);return Math.ceil((new Date(d+"T00:00:00")-t)/864e5);}
 function fd(s){const d=new Date(s+"T00:00:00");return`${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}`;}
 function hashData(d){return JSON.stringify(d);}
@@ -645,8 +698,8 @@ function ThemeSwitcher({current,onChange}){
 }
 
 /* ─── SETTINGS ── */
-function SettingsModal({data,setData,isDark,onClose}){
-  const [tab,setTab]=useState("materias");
+function SettingsModal({data,setData,isDark,themeId,setThemeId,appMode,userEmail,driveConnected,onClose,onReset,handleDriveConnect,handleDriveDisconnect,initialTab}){
+  const [tab,setTab]=useState(initialTab||"materias");
   const [editM,setEditM]=useState(null);
   const [editT,setEditT]=useState(null);
   const usedM=useMemo(()=>new Set(data.tareas.map(t=>t.materiaId)),[data.tareas]);
@@ -664,14 +717,28 @@ function SettingsModal({data,setData,isDark,onClose}){
     setEditT(null);
   }
   function delT(id){setData(d=>({...d,tipos:d.tipos.filter(x=>x.id!==id)}));}
+
+  const tabs=[
+    {id:"materias",label:"Materias"},
+    {id:"tipos",label:"Tipos"},
+    {id:"tema",label:"Tema"},
+  ];
+
   return e("div",{className:"ov",onClick:onClose},
     e("div",{className:"mod mod-wide",onClick:ev=>ev.stopPropagation()},
-      e("div",{className:"mhd"},e("span",{style:{fontSize:20,marginTop:2}},"⚙"),e("span",{className:"mtit"},"Configuración"),e("button",{className:"mclose",onClick:onClose},"✕")),
+      e("div",{className:"mhd"},
+        e("span",{style:{fontSize:20,marginTop:2}},"⚙"),
+        e("span",{className:"mtit"},"Configuración"),
+        e("button",{className:"mclose",onClick:onClose},"✕")
+      ),
       e("div",{className:"mbody"},
         e("div",{className:"stabs"},
-          e("button",{className:"stab "+(tab==="materias"?"stab-a":""),onClick:()=>setTab("materias")},"Materias ("+data.materias.length+")"),
-          e("button",{className:"stab "+(tab==="tipos"?"stab-a":""),onClick:()=>setTab("tipos")},"Tipos ("+data.tipos.length+")")
+          tabs.map(t=>e("button",{key:t.id,
+            className:"stab "+(tab===t.id?"stab-a":""),
+            onClick:()=>setTab(t.id)},t.label))
         ),
+
+        // ── MATERIAS ──
         tab==="materias"&&e(React.Fragment,null,
           e("div",{className:"slist"},data.materias.map(m=>{
             const tag=periodoTag(m);
@@ -689,6 +756,8 @@ function SettingsModal({data,setData,isDark,onClose}){
           editM!==null&&e(MateriaForm,{m:editM,onSave:saveM,onCancel:()=>setEditM(null)}),
           editM===null&&e("button",{className:"sadd",onClick:()=>{setEditM({});setEditT(null);}},"+ Agregar materia")
         ),
+
+        // ── TIPOS ──
         tab==="tipos"&&e(React.Fragment,null,
           e("div",{className:"slist"},data.tipos.map(t=>{
             const bs=badgeStyle(t.bg,t.accent,isDark);
@@ -702,11 +771,34 @@ function SettingsModal({data,setData,isDark,onClose}){
           })),
           editT!==null&&e(TipoForm,{t:editT,isDark,onSave:saveT,onCancel:()=>setEditT(null)}),
           editT===null&&e("button",{className:"sadd",onClick:()=>{setEditT({_new:true,label:"",icon:"📌",bg:"#eae8f6",accent:"#4e47b8"});setEditM(null);}},"+ Agregar tipo de tarea")
+        ),
+
+        // ── TEMA ──
+        tab==="tema"&&e("div",null,
+          e("div",{style:{marginBottom:10,fontSize:11,color:"var(--text2)"}},"Seleccioná el tema visual de la app:"),
+          e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+            THEMES.map(t=>e("button",{key:t.id,
+              onClick:()=>setThemeId(t.id),
+              style:{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",
+                borderRadius:7,cursor:"pointer",fontFamily:"inherit",fontSize:13,
+                background:themeId===t.id?"var(--info-bg)":"var(--bg2)",
+                border:"1px solid "+(themeId===t.id?"var(--accent)":"var(--border)"),
+                color:themeId===t.id?"var(--info-text)":"var(--text0)",
+                transition:"all .15s",textAlign:"left"}},
+              e("span",{style:{width:18,height:18,borderRadius:"50%",
+                background:t.dot,flexShrink:0,
+                outline:t.isDark?"2px solid #ffffff30":"2px solid #00000020",
+                outlineOffset:2}}),
+              e("span",{style:{flex:1,fontWeight:themeId===t.id?600:400}},t.label),
+              themeId===t.id&&e("span",{style:{color:"var(--ok-text)"}},"✓")
+            ))
+          )
         )
       )
     )
   );
 }
+
 function MateriaForm({m,onSave,onCancel}){
   const isNew=!m.id;
   const curYear=new Date().getFullYear();
@@ -802,7 +894,7 @@ function ChecklistEditor({items,onChange}){
 }
 
 /* ─── DATOS BUTTON ── */
-function DatosBtn({data,dirty,onExported,imp,driveConnected,syncStatus,autoSave,showSync,setShowSync,handleDriveConnect,handleDriveDisconnect,handleDriveSaveNow,handleDriveLoad,toggleAutoSave}){
+function DatosBtn({data,dirty,onExported,imp,driveConnected,syncStatus,autoSave,showSync,setShowSync,handleDriveConnect,handleDriveDisconnect,handleDriveSaveNow,handleDriveLoad,toggleAutoSave,onReset,userEmail}){
 
   function doExport(){
     const ts=new Date().toISOString().slice(0,16).replace("T","_").replace(/:/g,"-");
@@ -829,12 +921,12 @@ function DatosBtn({data,dirty,onExported,imp,driveConnected,syncStatus,autoSave,
     showSync&&e(DatosPopover,{
       driveConnected,syncStatus,autoSave,dirty,
       handleDriveConnect,handleDriveDisconnect,
-      onClose:()=>setShowSync(false),doExport,imp
+      onClose:()=>setShowSync(false),doExport,imp,onReset,userEmail
     })
   );
 }
 
-function DatosPopover({driveConnected,syncStatus,autoSave,dirty,handleDriveConnect,handleDriveDisconnect,onClose,doExport,imp}){
+function DatosPopover({driveConnected,syncStatus,autoSave,dirty,handleDriveConnect,handleDriveDisconnect,onClose,doExport,imp,onReset,userEmail}){
   const lastSaved=driveLastSaved();
   return e("div",{className:"sync-popover"},
     e("div",{className:"sync-pop-hd"},
@@ -842,7 +934,7 @@ function DatosPopover({driveConnected,syncStatus,autoSave,dirty,handleDriveConne
       e("button",{className:"mclose",onClick:onClose},"✕")
     ),
 
-    // ── LOCAL ──
+    // LOCAL
     e("div",{className:"sync-section"},
       e("div",{className:"sync-section-title"},"LOCAL"),
       e("div",{className:"sync-row"},
@@ -856,7 +948,7 @@ function DatosPopover({driveConnected,syncStatus,autoSave,dirty,handleDriveConne
 
     e("div",{className:"sync-divider"}),
 
-    // ── GOOGLE DRIVE ──
+    // GOOGLE DRIVE
     e("div",{className:"sync-section"},
       e("div",{className:"sync-section-title",style:{display:"flex",alignItems:"center",gap:6}},
         "☁ GOOGLE DRIVE",
@@ -864,32 +956,44 @@ function DatosPopover({driveConnected,syncStatus,autoSave,dirty,handleDriveConne
       ),
       driveConnected
         ? e(React.Fragment,null,
+            userEmail&&e("div",{style:{fontSize:11,color:"var(--text2)",marginBottom:6}},userEmail),
             e("div",{style:{fontSize:11,color:"var(--text2)",marginBottom:4}},
-              syncStatus==="saving"
-                ? "⟳ Guardando..."
-                : lastSaved
-                  ? "Último guardado: "+lastSaved
-                  : "Esperando cambios..."
+              syncStatus==="saving"?"⟳ Guardando...":lastSaved?"Último guardado: "+lastSaved:"Esperando cambios..."
             ),
-            e("div",{style:{fontSize:11,color:"var(--text3)",marginBottom:12}},
-              "Autoguardado activo — guarda 4s después de cada cambio"
+            e("div",{style:{fontSize:11,color:"var(--text3)",marginBottom:10}},
+              "Autoguardado activo — 4s después de cada cambio"
             ),
-            e("button",{className:"sync-disconnect-btn",onClick:()=>{handleDriveDisconnect();onClose();}},"Desconectar cuenta")
+            e("button",{className:"ibtn",style:{width:"100%",fontSize:11,marginBottom:6},
+              onClick:()=>{handleDriveDisconnect();onClose();}},
+              "⏏ Desconectar cuenta"
+            )
           )
         : e(React.Fragment,null,
             e("div",{style:{fontSize:11,color:"var(--text2)",marginBottom:10}},
-              "Conectá tu cuenta para guardar y sincronizar automáticamente."
+              "Conectá tu cuenta para guardar automáticamente."
             ),
             e("button",{className:"sync-connect-btn",onClick:()=>{handleDriveConnect();onClose();}},"Conectar Google Drive")
           )
+    ),
+
+    e("div",{className:"sync-divider"}),
+
+    // RESET
+    e("div",{style:{padding:"10px 14px"}},
+      e("button",{
+        onClick:()=>{onReset&&onReset();onClose();},
+        style:{width:"100%",background:"transparent",border:"1px solid var(--err-border)",
+          color:"var(--err-text)",padding:"6px 12px",borderRadius:5,cursor:"pointer",
+          fontFamily:"inherit",fontSize:11}
+      },"🗑 Resetear datos")
     )
   );
 }
 
-/* ─── UNSAVED TOAST ── */
-const LS_NO_TOAST = "uai-planner-no-toast";
 
-function UnsavedToast({dirty, driveConnected}){
+const LS_NO_TOAST="uai-planner-no-toast";
+
+function UnsavedToast({dirty, driveConnected, isDemo}){
   const [dismissed, setDismissed] = useState(()=>localStorage.getItem(LS_NO_TOAST)==="true");
   const [visible, setVisible] = useState(false);
   const hideTimer = useRef(null);
@@ -902,7 +1006,7 @@ function UnsavedToast({dirty, driveConnected}){
     return ()=>clearTimeout(hideTimer.current);
   },[dirty, driveConnected, dismissed]);
 
-  if(!visible) return null;
+  if(!visible||isDemo) return null;
 
   function closeTemp(){
     setVisible(false);
@@ -919,6 +1023,11 @@ function UnsavedToast({dirty, driveConnected}){
     e("button",{className:"toast-dismiss",onClick:closePerm},"No volver a mostrar"),
     e("button",{className:"toast-x",onClick:closeTemp,title:"Cerrar"},"✕")
   );
+}
+
+/* ─── CONFIG BTN ── */
+function ConfigBtn({onOpenSettings}){
+  return e("button",{className:"iconbtn",onClick:()=>onOpenSettings("materias"),title:"Configuración"},"⚙");
 }
 
 /* ─── PERIODO SELECTOR ── */
@@ -962,7 +1071,19 @@ function PeriodoSelector({anios,fAnio,fPeriodos,setFAnio,togglePeriodo}){
 function App(){
   const saved=localStorage.getItem("uai-theme")||"hueso";
   const [themeId,setThemeId]=useState(saved);
-  const [data,setData]=useState(SAMPLE);
+  // App mode: "welcome" | "local" | "drive"
+  const [appMode,setAppMode]=useState(()=>{
+    return localStorage.getItem(LS_MODE_KEY)||"welcome";
+  });
+  const [userEmail,setUserEmail]=useState(()=>localStorage.getItem(LS_EMAIL_KEY)||null);
+  const [data,setData]=useState(()=>{
+    const mode=localStorage.getItem(LS_MODE_KEY);
+    const email=localStorage.getItem(LS_EMAIL_KEY);
+    if(mode==="local"){ const d=loadFromLS(null); return d||EMPTY_DATA; }
+    if(mode==="drive"&&email){ const d=loadFromLS(email); return d||EMPTY_DATA; }
+    return EMPTY_DATA; // welcome screen
+  });
+  const [isDemo,setIsDemo]=useState(false);
   const [view,setView]=useState("backlog");
   const [fm,setFm]=useState("all");
   const [ft,setFt]=useState("all");
@@ -974,7 +1095,8 @@ function App(){
   const [fAnio,setFAnio]=useState("all");
   const [fPeriodos,setFPeriodos]=useState(["c1","c2","anual"]);
   // Drive state
-  const [driveConnected,setDriveConnected]=useState(driveIsConnected());
+  const [driveConnected,setDriveConnected]=useState(false); // always start disconnected, reconnect silently
+  const [driveConflict,setDriveConflict]=useState(null); // {driveData, localData}
   const [syncStatus,setSyncStatus]=useState("idle"); // idle | saving | saved | error
   const [syncMsg,setSyncMsg]=useState("");
   const [autoSave,setAutoSave]=useState(()=>localStorage.getItem("uai-autosave")==="true");
@@ -986,11 +1108,29 @@ function App(){
   const [manualSession,setManualSession]=useState(null);
   const [showManualSession,setShowManualSession]=useState(false);
   const [impErr,setImpErr]=useState(null);
-  const lastExp=useRef(hashData(SAMPLE));
+  const lastExp=useRef(hashData(EMPTY_DATA));
   const [dirty,setDirty]=useState(false);
 
   useEffect(()=>{applyTheme(themeId);},[themeId]);
+
   useEffect(()=>{setDirty(hashData(data)!==lastExp.current);},[data]);
+  useEffect(()=>{
+    if(appMode!=="welcome"&&!isDemo) saveToLS(data,userEmail);
+  },[data,appMode,userEmail,isDemo]);
+
+  // Silently reconnect Drive if was previously connected
+  useEffect(()=>{
+    if(appMode==="drive"&&userEmail&&driveReady()){
+      driveConnectSilent((token,err)=>{
+        if(token){ setDriveConnected(true); setSyncStatus("idle"); }
+        else{
+          setAppMode("welcome");
+          localStorage.setItem(LS_MODE_KEY,"welcome");
+          setSyncMsg("Tu sesión de Google expiró. Volvé a conectarte.");
+        }
+      });
+    }
+  },[]);
 
   // Autosave debounce — fires 4s after last change, always on when Drive connected
   useEffect(()=>{
@@ -1027,15 +1167,116 @@ function App(){
     setForm(null);if(t.id)setSelId(t.id);
   }
   function del(id){setData(d=>({...d,tareas:d.tareas.filter(t=>t.id!==id)}));setSelId(null);}
-  function handleDriveConnect(){
+  function handleDriveConnect(fromWelcome=false){
     driveConnect((token,err)=>{
       if(err){ setSyncMsg("Error al conectar: "+err); return; }
       setDriveConnected(true); setSyncStatus("idle");
-      toggleAutoSave(true); // always autosave when connected
+      toggleAutoSave(true);
+      // Get user email from Google
+      fetch("https://www.googleapis.com/oauth2/v2/userinfo",
+        {headers:{Authorization:"Bearer "+token}})
+        .then(r=>r.json())
+        .then(info=>{
+          const email=info.email||"unknown";
+          setUserEmail(email);
+          localStorage.setItem(LS_EMAIL_KEY, email);
+          localStorage.setItem(LS_MODE_KEY,"drive");
+          setAppMode("drive");
+          // Try to load existing Drive data
+          driveLoad().then(driveData=>{
+            if(!driveData) {
+              // No Drive file → upload current local data
+              if(!isEmptyData(data)&&!isSampleData(data)){
+                driveSave(data).then(()=>{driveMarkSaved();setSyncStatus("saved");});
+              }
+              return;
+            }
+            if(driveData.version&&driveData.version!==DATA_VERSION){
+              setSyncMsg("El archivo en Drive es de una versión anterior y no es compatible.");
+              return;
+            }
+            const {version:_v,...cleanDrive}=driveData;
+            cleanDrive.tareas=(cleanDrive.tareas||[]).map(t=>({items:[],obligatorio:true,...t}));
+            cleanDrive.sesiones=cleanDrive.sesiones||[];
+            if(isEmptyData(data)||isSampleData(data)||fromWelcome){
+              // Local empty/sample → auto-load Drive
+              setData(cleanDrive); lastExp.current=hashData(cleanDrive); setDirty(false);
+            } else {
+              // Both have real data → conflict
+              setDriveConflict({driveData:cleanDrive,localData:data});
+            }
+          }).catch(()=>{});
+        }).catch(()=>{
+          setUserEmail(null);
+          localStorage.setItem(LS_MODE_KEY,"drive");
+          setAppMode("drive");
+        });
     });
   }
-  function handleDriveDisconnect(){
-    driveDisconnect(); setDriveConnected(false); setSyncStatus("idle");
+  const [disconnectModal,setDisconnectModal]=useState(false);
+  const [resetModal,setResetModal]=useState(false);
+  const [resetConfirm2,setResetConfirm2]=useState(false); // second confirm for total reset
+
+  function handleDriveDisconnect(){ setDisconnectModal(true); }
+
+  function doDisconnectKeep(){
+    // Revoke token, keep data as anonymous local
+    driveDisconnect();
+    setDriveConnected(false); setSyncStatus("idle");
+    // Move data to anonymous key
+    saveToLS(data, null);
+    setUserEmail(null);
+    localStorage.removeItem(LS_EMAIL_KEY);
+    localStorage.setItem(LS_MODE_KEY,"local");
+    setAppMode("local");
+    setDisconnectModal(false);
+  }
+  function doDisconnectClean(){
+    // Revoke token, clear local data, back to welcome
+    driveDisconnect();
+    clearLS(userEmail);
+    setDriveConnected(false); setSyncStatus("idle");
+    setUserEmail(null);
+    localStorage.removeItem(LS_EMAIL_KEY);
+    localStorage.setItem(LS_MODE_KEY,"welcome");
+    setAppMode("welcome");
+    setData(EMPTY_DATA);
+    setDisconnectModal(false);
+  }
+
+  function doResetLocalOnly(){
+    // Clear local storage, disconnect if connected, back to welcome
+    clearLS(userEmail);
+    clearLS(null);
+    if(driveConnected){ driveDisconnect(); setDriveConnected(false); }
+    setUserEmail(null);
+    localStorage.removeItem(LS_EMAIL_KEY);
+    localStorage.setItem(LS_MODE_KEY,"welcome");
+    setAppMode("welcome");
+    setData(EMPTY_DATA);
+    setResetModal(false);
+  }
+  async function doResetAll(){
+    // Clear local + delete Drive file
+    clearLS(userEmail);
+    clearLS(null);
+    if(driveConnected&&driveState.fileId){
+      try{
+        await fetch(`https://www.googleapis.com/drive/v3/files/${driveState.fileId}`,
+          {method:"DELETE",headers:{Authorization:`Bearer ${driveState.accessToken}`}});
+        driveState.fileId=null;
+        localStorage.removeItem(LS_FILE_ID);
+      }catch(e){}
+      driveDisconnect();
+      setDriveConnected(false);
+    }
+    setUserEmail(null);
+    localStorage.removeItem(LS_EMAIL_KEY);
+    localStorage.setItem(LS_MODE_KEY,"welcome");
+    setAppMode("welcome");
+    setData(EMPTY_DATA);
+    setResetModal(false);
+    setResetConfirm2(false);
   }
   function handleDriveSaveNow(){
     setSyncStatus("saving");
@@ -1068,6 +1309,19 @@ function App(){
       tareas:quickTask?[...d.tareas,quickTask]:d.tareas
     }));
     setManualSession(null);
+  }
+  function enterLocal(){
+    localStorage.setItem(LS_MODE_KEY,"local");
+    setAppMode("local");
+    const saved=loadFromLS(null);
+    if(saved){ setData(saved); lastExp.current=hashData(saved); }
+    else { setData(EMPTY_DATA); lastExp.current=hashData(EMPTY_DATA); }
+    setIsDemo(false);
+  }
+  function enterDemo(){
+    setData(SAMPLE);
+    setIsDemo(true);
+    setAppMode("local"); // show the planner but don't save
   }
   function startPomoFromTask(task){
     setPomoSession({materiaId:task.materiaId,tareaId:task.id});
@@ -1124,6 +1378,8 @@ function App(){
       r.readAsText(ev.target.files[0]);
     };
     inp.click();
+    // If importing from welcome, switch to local mode
+    if(appMode==="welcome"){ localStorage.setItem(LS_MODE_KEY,"local"); setAppMode("local"); }
   }
   function onExported(){lastExp.current=hashData(data);setDirty(false);}
   // materias visibles según filtro de año/período
@@ -1150,9 +1406,20 @@ function App(){
     );
   }
 
+  // Show welcome screen
+  if(appMode==="welcome"){
+    return e(WelcomeScreen,{
+      onLocal:enterLocal,
+      onDrive:()=>handleDriveConnect(true),
+      onDemo:enterDemo,
+      expiredMsg:syncMsg&&syncMsg.includes("expiró")?syncMsg:null
+    });
+  }
+
   return e("div",{className:"app"},
     e("header",{className:"hdr"},
       e("span",{className:"logo"},"◈ UAI Planner"),
+
       e(PeriodoSelector,{anios:aniosDisponibles,fAnio,fPeriodos,setFAnio,togglePeriodo}),
       e("nav",{className:"nav"},
         [["backlog","≡ Backlog"],["kanban","⬡ Kanban"],["calendar","◷ Calendario"],["materias","◉ Materias"]].map(([v,l])=>
@@ -1160,12 +1427,13 @@ function App(){
         )
       ),
       e("div",{className:"hdr-btns"},
-        e(ThemeSwitcher,{current:themeId,onChange:setThemeId}),
-        e("button",{className:"iconbtn",onClick:()=>setSettings(true),title:"Configurar materias y tipos"},"⚙"),
+        e(ConfigBtn,{onOpenSettings:(tab)=>setSettings(tab||"materias")}),
         e(DatosBtn,{
           data,dirty,onExported,imp,
-          driveConnected,syncStatus,syncMsg,showSync,
-          setShowSync,handleDriveConnect,handleDriveDisconnect
+          driveConnected,syncStatus,autoSave,showSync,
+          setShowSync,handleDriveConnect,handleDriveDisconnect,
+          handleDriveSaveNow,handleDriveLoad,toggleAutoSave,
+          onReset:()=>setResetModal(true),userEmail
         })
       )
     ),
@@ -1191,8 +1459,40 @@ function App(){
     sel&&e(TaskModal,{task:sel,mat:mmap[sel.materiaId],tipo:tmap[sel.tipo],isDark,move,toggleItem,onStartPomo:startPomoFromTask,sesiones:data.sesiones||[],
       onClose:()=>setSelId(null),onEdit:()=>{setForm(sel);setSelId(null);},onDel:del}),
     form!==null&&e(FormModal,{task:form,materias:data.materias,tipos,isDark,onSave:saveTask,onClose:()=>setForm(null)}),
-    settings&&e(SettingsModal,{data,setData,isDark,onClose:()=>setSettings(false)}),
-    e(UnsavedToast,{dirty,driveConnected}),
+    settings&&e(SettingsModal,{data,setData,isDark,
+      themeId,setThemeId,appMode,userEmail,driveConnected,
+      onClose:()=>setSettings(false),
+      onReset:()=>setResetModal(true),
+      handleDriveConnect,handleDriveDisconnect,
+      initialTab:typeof settings==="string"?settings:"materias"
+    }),
+    e(UnsavedToast,{dirty,driveConnected,isDemo}),
+    driveConflict&&e(DriveConflictModal,{
+      conflict:driveConflict,
+      onUseDrive:()=>{
+        const d={...driveConflict.driveData,
+          tareas:(driveConflict.driveData.tareas||[]).map(t=>({items:[],obligatorio:true,...t})),
+          sesiones:driveConflict.driveData.sesiones||[]};
+        setData(d);lastExp.current=hashData(d);setDirty(false);setDriveConflict(null);
+      },
+      onUseLocal:()=>{
+        setDirty(true);setDriveConflict(null); // mark dirty so it uploads local to Drive
+      },
+      onClose:()=>setDriveConflict(null)
+    }),
+    disconnectModal&&e(DisconnectModal,{
+      driveConnected,userEmail,
+      onKeep:doDisconnectKeep,
+      onClean:doDisconnectClean,
+      onClose:()=>setDisconnectModal(false)
+    }),
+    resetModal&&e(ResetModal,{
+      driveConnected,
+      resetConfirm2,setResetConfirm2,
+      onResetLocal:doResetLocalOnly,
+      onResetAll:doResetAll,
+      onClose:()=>{setResetModal(false);setResetConfirm2(false);}
+    }),
     pomoContext&&e(PomoContextPopup,{materia:pomoContext,tareas:data.tareas,tipos,onStart:handlePomoContextStart,onClose:()=>setPomoContext(null)}),
     manualSession&&e(ManualSessionModal,{materia:manualSession,tareas:data.tareas,onSave:saveManualSession,onClose:()=>setManualSession(null)}),
 
@@ -1958,8 +2258,7 @@ function MateriasDetail({m,sesiones,tareas,isDark,onStartPomo,onEditMateria,onMa
 
   return e("div",{className:"mat-detail"},
     // Action bar
-    e("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"10px 18px",
-      borderBottom:"1px solid var(--border)"}},
+    e("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"10px 18px"}},
       e("button",{className:"ibtn",style:{fontSize:11,padding:"4px 10px"},
         onClick:()=>setEditingHoras(!editingHoras)},
         editingHoras?"✕ Cerrar":"✎ Objetivos"),
@@ -2111,10 +2410,216 @@ function HorasEditor({m,onSave,onCancel}){
   );
 }
 
+/* ─── WELCOME SCREEN ── */
+function WelcomeScreen({onLocal,onDrive,onDemo,expiredMsg}){
+  return e("div",{style:{
+    minHeight:"100vh",display:"flex",flexDirection:"column",
+    alignItems:"center",justifyContent:"center",
+    background:"var(--bg0)",padding:24
+  }},
+    e("div",{style:{textAlign:"center",marginBottom:48}},
+      e("div",{style:{fontSize:32,marginBottom:8}},"◈"),
+      e("h1",{style:{fontSize:24,fontWeight:700,color:"var(--text0)",
+        letterSpacing:".05em",marginBottom:6}},"UAI Planner"),
+      e("p",{style:{fontSize:13,color:"var(--text2)"}},
+        "Tu organizador académico personal")
+    ),
+    expiredMsg&&e("div",{style:{
+      background:"var(--warn-bg)",border:"1px solid var(--warn-border)",
+      color:"var(--warn-text)",padding:"10px 18px",borderRadius:7,
+      fontSize:12,marginBottom:24,maxWidth:380,textAlign:"center"
+    }},expiredMsg),
+    e("div",{style:{display:"flex",flexDirection:"column",gap:12,width:"100%",maxWidth:360}},
+      e("button",{
+        onClick:onDrive,
+        style:{
+          display:"flex",alignItems:"center",gap:12,
+          padding:"16px 20px",borderRadius:9,cursor:"pointer",
+          fontFamily:"inherit",fontSize:14,fontWeight:600,
+          background:"var(--info-bg)",border:"1px solid var(--accent)",
+          color:"var(--info-text)",transition:"all .15s",textAlign:"left"
+        }},
+        e("span",{style:{fontSize:22}},"☁"),
+        e("div",null,
+          e("div",null,"Conectar con Google Drive"),
+          e("div",{style:{fontSize:11,fontWeight:400,color:"var(--text2)",marginTop:2}},
+            "Tus datos se sincronizan automáticamente")
+        )
+      ),
+      e("button",{
+        onClick:onLocal,
+        style:{
+          display:"flex",alignItems:"center",gap:12,
+          padding:"16px 20px",borderRadius:9,cursor:"pointer",
+          fontFamily:"inherit",fontSize:14,fontWeight:600,
+          background:"var(--bg1)",border:"1px solid var(--border2)",
+          color:"var(--text0)",transition:"all .15s",textAlign:"left"
+        }},
+        e("span",{style:{fontSize:22}},"💻"),
+        e("div",null,
+          e("div",null,"Usar sin cuenta"),
+          e("div",{style:{fontSize:11,fontWeight:400,color:"var(--text2)",marginTop:2}},
+            "Los datos se guardan solo en este dispositivo")
+        )
+      ),
+      e("button",{
+        onClick:onDemo,
+        style:{
+          background:"transparent",border:"none",
+          color:"var(--text3)",cursor:"pointer",
+          fontFamily:"inherit",fontSize:12,
+          padding:"8px",marginTop:4,
+          transition:"color .15s"
+        }},
+        "Ver demo con datos de ejemplo"
+      )
+    ),
+    e("p",{style:{fontSize:10,color:"var(--text3)",marginTop:40,textAlign:"center",maxWidth:320}},
+      "Al conectar tu cuenta solo accedemos al archivo de datos que creamos. "+
+      "No leemos ni modificamos ningún otro archivo de tu Drive."
+    )
+  );
+}
+
+/* ─── DISCONNECT MODAL ── */
+function DisconnectModal({driveConnected,userEmail,onKeep,onClean,onClose}){
+  return e("div",{className:"ov",onClick:onClose},
+    e("div",{className:"mod",style:{maxWidth:420},onClick:ev=>ev.stopPropagation()},
+      e("div",{className:"mhd"},
+        e("span",{style:{fontSize:20}},"⏏"),
+        e("span",{className:"mtit"},"Desconectar Google Drive"),
+        e("button",{className:"mclose",onClick:onClose},"✕")
+      ),
+      e("div",{className:"mbody"},
+        userEmail&&e("div",{style:{fontSize:12,color:"var(--text2)",marginBottom:16}},"Conectado como: "+userEmail),
+        e("p",{style:{fontSize:13,color:"var(--text1)",lineHeight:1.6,marginBottom:18}},
+          "¿Qué hacemos con tus datos locales?"
+        ),
+        e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+          e("button",{onClick:onKeep,style:{
+            background:"var(--bg2)",border:"1px solid var(--border2)",color:"var(--text0)",
+            padding:"12px 16px",borderRadius:7,cursor:"pointer",fontFamily:"inherit",
+            fontSize:13,textAlign:"left",transition:"all .15s"}},
+            e("div",{style:{fontWeight:600,marginBottom:3}},"💻 Desconectar y conservar datos locales"),
+            e("div",{style:{fontSize:11,color:"var(--text2)"}},"El archivo en Drive queda intacto. Seguís viendo tus datos en modo local.")
+          ),
+          e("button",{onClick:onClean,style:{
+            background:"var(--bg2)",border:"1px solid var(--border2)",color:"var(--text0)",
+            padding:"12px 16px",borderRadius:7,cursor:"pointer",fontFamily:"inherit",
+            fontSize:13,textAlign:"left",transition:"all .15s"}},
+            e("div",{style:{fontWeight:600,marginBottom:3}},"🗑 Desconectar y limpiar datos locales"),
+            e("div",{style:{fontSize:11,color:"var(--text2)"}},"El archivo en Drive queda intacto. Los datos se borran de este dispositivo.")
+          )
+        )
+      )
+    )
+  );
+}
+
+/* ─── RESET MODAL ── */
+function ResetModal({driveConnected,resetConfirm2,setResetConfirm2,onResetLocal,onResetAll,onClose}){
+  if(resetConfirm2){
+    return e("div",{className:"ov",onClick:onClose},
+      e("div",{className:"mod",style:{maxWidth:380},onClick:ev=>ev.stopPropagation()},
+        e("div",{className:"mhd"},
+          e("span",{style:{fontSize:20}},"⚠"),
+          e("span",{className:"mtit"},"¿Confirmar borrado total?"),
+          e("button",{className:"mclose",onClick:onClose},"✕")
+        ),
+        e("div",{className:"mbody"},
+          e("p",{style:{fontSize:13,color:"var(--err-text)",lineHeight:1.6,marginBottom:18}},"Esto borrará tus datos locales Y el archivo en Google Drive. Esta acción no se puede deshacer."),
+          e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},
+            e("button",{className:"cancbtn",onClick:onClose},"Cancelar"),
+            e("button",{className:"delbtn",style:{width:"auto",padding:"6px 16px"},onClick:onResetAll},"Sí, borrar todo")
+          )
+        )
+      )
+    );
+  }
+  return e("div",{className:"ov",onClick:onClose},
+    e("div",{className:"mod",style:{maxWidth:420},onClick:ev=>ev.stopPropagation()},
+      e("div",{className:"mhd"},
+        e("span",{style:{fontSize:20}},"🗑"),
+        e("span",{className:"mtit"},"Resetear datos"),
+        e("button",{className:"mclose",onClick:onClose},"✕")
+      ),
+      e("div",{className:"mbody"},
+        driveConnected
+          ? e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+              e("button",{onClick:()=>setResetConfirm2(true),style:{
+                background:"var(--err-bg)",border:"1px solid var(--err-border)",color:"var(--err-text)",
+                padding:"12px 16px",borderRadius:7,cursor:"pointer",fontFamily:"inherit",
+                fontSize:13,textAlign:"left",transition:"all .15s"}},
+                e("div",{style:{fontWeight:600,marginBottom:3}},"🗑 Resetear todo — local y Drive"),
+                e("div",{style:{fontSize:11}},"Borra los datos locales y el archivo en Drive. La app queda como nueva.")
+              ),
+              e("button",{onClick:onResetLocal,style:{
+                background:"var(--bg2)",border:"1px solid var(--border2)",color:"var(--text0)",
+                padding:"12px 16px",borderRadius:7,cursor:"pointer",fontFamily:"inherit",
+                fontSize:13,textAlign:"left",transition:"all .15s"}},
+                e("div",{style:{fontWeight:600,marginBottom:3}},"⏏ Desconectar Drive y resetear local"),
+                e("div",{style:{fontSize:11,color:"var(--text2)"}},"El archivo en Drive queda intacto. Los datos locales se borran.")
+              )
+            )
+          : e("div",null,
+              e("p",{style:{fontSize:13,color:"var(--text1)",lineHeight:1.6,marginBottom:18}},
+                "¿Resetear todos los datos? Esto borra todos los datos locales. No se puede deshacer."),
+              e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},
+                e("button",{className:"cancbtn",onClick:onClose},"Cancelar"),
+                e("button",{className:"delbtn",style:{width:"auto",padding:"6px 16px"},onClick:onResetLocal},"🗑 Sí, resetear")
+              )
+            )
+      )
+    )
+  );
+}
+
+/* ─── DRIVE CONFLICT MODAL ── */
+function DriveConflictModal({conflict,onUseDrive,onUseLocal,onClose}){
+  return e("div",{className:"ov",onClick:onClose},
+    e("div",{className:"mod",style:{maxWidth:420},onClick:ev=>ev.stopPropagation()},
+      e("div",{className:"mhd"},
+        e("span",{style:{fontSize:20}},"☁"),
+        e("span",{className:"mtit"},"Datos encontrados en Google Drive"),
+        e("button",{className:"mclose",onClick:onClose},"✕")
+      ),
+      e("div",{className:"mbody"},
+        e("p",{style:{fontSize:13,color:"var(--text1)",lineHeight:1.6,marginBottom:18}},
+          "Hay datos guardados en Drive y también datos locales en este dispositivo. ¿Con cuáles querés trabajar?"
+        ),
+        e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+          e("button",{
+            onClick:onUseDrive,
+            style:{background:"var(--info-bg)",border:"1px solid var(--accent)",color:"var(--info-text)",
+              padding:"12px 16px",borderRadius:7,cursor:"pointer",fontFamily:"inherit",
+              fontSize:13,textAlign:"left",transition:"all .15s"}},
+            e("div",{style:{fontWeight:600,marginBottom:3}},"☁ Usar datos de Google Drive"),
+            e("div",{style:{fontSize:11,color:"var(--text2)"}},
+              (conflict.driveData.tareas?.length||0)+" tareas · "+(conflict.driveData.materias?.length||0)+" materias")
+          ),
+          e("button",{
+            onClick:onUseLocal,
+            style:{background:"var(--bg2)",border:"1px solid var(--border2)",color:"var(--text0)",
+              padding:"12px 16px",borderRadius:7,cursor:"pointer",fontFamily:"inherit",
+              fontSize:13,textAlign:"left",transition:"all .15s"}},
+            e("div",{style:{fontWeight:600,marginBottom:3}},"💻 Conservar datos locales"),
+            e("div",{style:{fontSize:11,color:"var(--text2)"}},
+              (conflict.localData.tareas?.length||0)+" tareas · "+(conflict.localData.materias?.length||0)+" materias")
+          )
+        ),
+        e("p",{style:{fontSize:10,color:"var(--text3)",marginTop:14,textAlign:"center"}},
+          "Los datos que no elijas no se borran automáticamente."
+        )
+      )
+    )
+  );
+}
+
 /* ─── SCHEMA HINT ── */
 function SchemaHint(){
   const [open,setOpen]=useState(false);
   const schema=`{
+  "version": "1",
   "materias":  [{ "id","nombre","codigo","color":"#hex","anio":2026,"periodo":"c1|c2|anual" }],
   "tipos":     [{ "id","label","icon":"emoji","bg":"#hex","accent":"#hex" }],
   "tareas": [{
