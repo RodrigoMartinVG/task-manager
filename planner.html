@@ -74,7 +74,7 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)!
 .hdr{display:flex;align-items:center;gap:10px;padding:11px 22px;border-bottom:1px solid var(--border);background:var(--bg1);position:sticky;top:0;z-index:100}
 .logo{font-size:15px;font-weight:700;color:var(--text0);letter-spacing:.05em;margin-right:4px}
 .subtitle{font-size:10px;color:var(--text3);margin-right:auto}
-.nav{display:flex;gap:0;background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:3px;position:absolute;left:50%;transform:translateX(-50%)}
+.nav{display:flex;gap:8px;background:transparent;border:none;padding:0;position:absolute;left:50%;transform:translateX(-50%)}
 .nb{background:transparent;border:none;color:var(--text2);padding:5px 16px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:500;transition:all .18s;white-space:nowrap}
 .nb:hover{color:var(--text0)}
 .nba{background:var(--bg1);color:var(--text0);box-shadow:0 1px 3px rgba(0,0,0,.12)}
@@ -270,8 +270,11 @@ pre.hintcode{margin-top:10px;background:var(--bg1);border:1px solid var(--border
 .pomo-stop-btn{width:100%;background:var(--err-bg);border:1px solid var(--err-border);color:var(--err-text);padding:7px 12px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700;transition:all .15s}
 .pomo-stop-btn:hover{opacity:.85}
 @keyframes pomo-pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes pomo-pulse{0%,100%{box-shadow:0 0 0 0 var(--ok-text)}70%{box-shadow:0 0 0 6px transparent}}
+@keyframes pomo-glow{0%,100%{opacity:1}50%{opacity:.6}}
+.pomo-status-active{animation:pomo-glow 2s ease-in-out infinite}
 .pomo-focus-overlay{position:fixed;inset:0;background:var(--overlay);display:flex;align-items:center;justify-content:center;z-index:2000;backdrop-filter:blur(6px)}
-.pomo-focus-card{background:var(--bg1);border:1px solid var(--border2);border-radius:16px;padding:40px 48px;width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center;box-shadow:0 24px 60px rgba(0,0,0,.25)}
+.pomo-focus-card{background:var(--bg1);border:1px solid var(--border2);border-radius:16px;padding:40px 56px;width:100%;max-width:560px;display:flex;flex-direction:column;align-items:center;box-shadow:0 24px 60px rgba(0,0,0,.25)}
 .pomo-status-badge{font-size:11px;font-weight:700;letter-spacing:.12em;padding:5px 14px;border-radius:20px;margin-bottom:28px}
 .pomo-status-active{background:var(--ok-bg);color:var(--ok-text);border:1px solid var(--ok-border)}
 .pomo-status-paused{background:var(--warn-bg);color:var(--warn-text);border:1px solid var(--warn-border)}
@@ -290,7 +293,7 @@ pre.hintcode{margin-top:10px;background:var(--bg1);border:1px solid var(--border
 .mat-table-hd{display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--border);font-size:9px;color:var(--text3);letter-spacing:.08em;font-weight:600}
 .mat-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
 .mat-row:last-child{border-bottom:none}
-.mat-row:hover{background:var(--bg2)}
+.mat-row:hover{background:var(--bg2);border-color:var(--border2)!important}.mat-row:hover .mat-chevron{color:var(--accent);transform:translateX(2px)}
 .mat-row-active{background:var(--info-bg)!important;border-left:3px solid var(--accent)}
 .mat-row-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 .mat-detail{background:var(--bg0);border:none;border-radius:0;padding:0;display:flex;flex-direction:column;gap:0;animation:detail-in .2s ease}
@@ -393,10 +396,10 @@ const DEFAULT_TIPOS=[
 
 const SAMPLE={
   materias:[
-    {id:"m1",nombre:"Diseño de Sistemas",    codigo:"DS301",color:"#4e47b8",anio:2026,periodo:"c1",horasMin:3,horasMax:6,fechaInicio:"2026-03-10"},
-    {id:"m2",nombre:"Bases de Datos II",      codigo:"BD202",color:"#a83860",anio:2026,periodo:"c1",horasMin:2,horasMax:4,fechaInicio:"2026-03-10"},
-    {id:"m3",nombre:"Ingeniería de Software", codigo:"IS401",color:"#167a58",anio:2026,periodo:"c1",horasMin:2,horasMax:4,fechaInicio:"2026-03-10"},
-    {id:"m4",nombre:"Redes y Comunicaciones", codigo:"RC305",color:"#8f5510",anio:2026,periodo:"c1",horasMin:1,horasMax:3,fechaInicio:"2026-03-10"},
+    {id:"m1",nombre:"Diseño de Sistemas",    codigo:"DS301",color:"#4e47b8",anio:2026,periodo:"c1",horasMin:3,horasMax:6,fechaInicio:"2026-03-10",slots:[{dia:"lun",momento:"manana"},{dia:"mie",momento:"tarde"},{dia:"vie",momento:"manana"}]},
+    {id:"m2",nombre:"Bases de Datos II",      codigo:"BD202",color:"#a83860",anio:2026,periodo:"c1",horasMin:2,horasMax:4,fechaInicio:"2026-03-10",slots:[{dia:"mar",momento:"tarde"},{dia:"jue",momento:"tarde"}]},
+    {id:"m3",nombre:"Ingeniería de Software", codigo:"IS401",color:"#167a58",anio:2026,periodo:"c1",horasMin:2,horasMax:4,fechaInicio:"2026-03-10",slots:[{dia:"lun",momento:"tarde"},{dia:"jue",momento:"manana"}]},
+    {id:"m4",nombre:"Redes y Comunicaciones", codigo:"RC305",color:"#8f5510",anio:2026,periodo:"c1",horasMin:1,horasMax:3,fechaInicio:"2026-03-10",slots:[{dia:"mie",momento:"manana"},{dia:"vie",momento:"noche"}]},
     {id:"m5",nombre:"Algoritmos y Estructuras",codigo:"AE201",color:"#167a58",anio:2026,periodo:"c2",horasMin:3,horasMax:5,fechaInicio:"2026-08-03"},
     {id:"m6",nombre:"Sistemas Operativos",    codigo:"SO301",color:"#6b3fa0",anio:2026,periodo:"c2",horasMin:2,horasMax:4,fechaInicio:"2026-08-03"},
     {id:"m7",nombre:"Inglés Técnico",         codigo:"IT101",color:"#8f5510",anio:2026,periodo:"anual",horasMin:1,horasMax:2,fechaInicio:"2026-03-10"},
@@ -641,6 +644,59 @@ function isEmptyData(data){
 
 const EMPTY_DATA={materias:[],tipos:DEFAULT_TIPOS,tareas:[],sesiones:[]};
 
+/* ─── SLOTS CONFIG ── */
+const DEFAULT_FRANJAS={
+  manana:{label:"Mañana",inicio:6,fin:13,emoji:"🌅"},
+  tarde: {label:"Tarde", inicio:13,fin:19,emoji:"☀️"},
+  noche: {label:"Noche", inicio:19,fin:24,emoji:"🌙"},
+};
+const DIAS=[
+  {id:"lun",label:"Lun"},
+  {id:"mar",label:"Mar"},
+  {id:"mie",label:"Mié"},
+  {id:"jue",label:"Jue"},
+  {id:"vie",label:"Vie"},
+  {id:"sab",label:"Sáb"},
+  {id:"dom",label:"Dom"},
+];
+const DIA_JS_TO_ID=["dom","lun","mar","mie","jue","vie","sab"];
+
+function getFranjas(){
+  try{
+    const s=localStorage.getItem("uai-franjas");
+    return s?JSON.parse(s):DEFAULT_FRANJAS;
+  }catch(e){return DEFAULT_FRANJAS;}
+}
+
+function getMomentoActual(){
+  const h=new Date().getHours();
+  const f=getFranjas();
+  for(const [id,franja] of Object.entries(f)){
+    if(h>=franja.inicio&&h<franja.fin) return id;
+  }
+  return "noche";
+}
+
+function getDiaActual(){
+  return DIA_JS_TO_ID[new Date().getDay()];
+}
+
+function getMateriasParaHoy(materias,slots){
+  const dia=getDiaActual();
+  const momento=getMomentoActual();
+  // materias with slot matching today
+  return materias.filter(m=>(m.slots||[]).some(s=>s.dia===dia&&s.momento===momento));
+}
+
+function getMateriasMasTarde(materias){
+  const dia=getDiaActual();
+  const momento=getMomentoActual();
+  const franjas=Object.keys(getFranjas());
+  const momentoIdx=franjas.indexOf(momento);
+  const restantes=franjas.slice(momentoIdx+1);
+  return materias.filter(m=>(m.slots||[]).some(s=>s.dia===dia&&restantes.includes(s.momento)));
+}
+
 function daysUntil(d){const t=new Date();t.setHours(0,0,0,0);return Math.ceil((new Date(d+"T00:00:00")-t)/864e5);}
 function fd(s){const d=new Date(s+"T00:00:00");return`${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}`;}
 function hashData(d){return JSON.stringify(d);}
@@ -678,7 +734,9 @@ function ExportBtn({data,dirty,onExported}){
 function ThemeSwitcher({current,onChange}){
   const [open,setOpen]=useState(false);
   const cur=THEMES.find(t=>t.id===current)||THEMES[0];
-  return e("div",{className:"tsw-wrap"},
+  const ref=useRef(null);
+  useClickOutside(ref,()=>setOpen(false));
+  return e("div",{className:"tsw-wrap",ref},
     e("button",{className:"iconbtn tsw-btn",onClick:()=>setOpen(!open),title:"Cambiar tema"},
       e("span",{className:"tsw-preview",style:{background:cur.dot,outline:cur.isDark?"1px solid #ffffff40":"1px solid #00000020"}}),
       "Tema"
@@ -697,8 +755,87 @@ function ThemeSwitcher({current,onChange}){
   );
 }
 
+/* ─── SLOT GRID ── */
+function SlotGrid({slots,onChange}){
+  const franjas=getFranjas();
+  const franjaIds=Object.keys(franjas);
+
+  function toggle(dia,momento){
+    const exists=(slots||[]).some(s=>s.dia===dia&&s.momento===momento);
+    if(exists) onChange((slots||[]).filter(s=>!(s.dia===dia&&s.momento===momento)));
+    else onChange([...(slots||[]),{dia,momento}]);
+  }
+
+  function isOn(dia,momento){
+    return (slots||[]).some(s=>s.dia===dia&&s.momento===momento);
+  }
+
+  return e("div",{style:{overflowX:"auto"}},
+    e("table",{style:{borderCollapse:"collapse",width:"100%",minWidth:300}},
+      e("thead",null,
+        e("tr",null,
+          e("th",{style:{width:60,fontSize:9,color:"var(--text3)",fontWeight:600,letterSpacing:".06em",padding:"4px 0",textAlign:"left"}},""),
+          DIAS.map(d=>e("th",{key:d.id,style:{fontSize:10,color:"var(--text2)",fontWeight:600,
+            padding:"4px 6px",textAlign:"center",width:36}},d.label))
+        )
+      ),
+      e("tbody",null,
+        franjaIds.map(fid=>{
+          const f=franjas[fid];
+          return e("tr",{key:fid},
+            e("td",{style:{fontSize:10,color:"var(--text2)",padding:"3px 0",
+              whiteSpace:"nowrap",paddingRight:8}},
+              f.emoji+" "+f.label
+            ),
+            DIAS.map(d=>{
+              const on=isOn(d.id,fid);
+              return e("td",{key:d.id,style:{textAlign:"center",padding:"3px 4px"}},
+                e("button",{
+                  onClick:()=>toggle(d.id,fid),
+                  style:{
+                    width:28,height:28,borderRadius:5,border:"1px solid",cursor:"pointer",
+                    fontSize:12,transition:"all .15s",
+                    background:on?"var(--info-bg)":"var(--bg2)",
+                    borderColor:on?"var(--accent)":"var(--border)",
+                    color:on?"var(--info-text)":"var(--text3)"
+                  }
+                },on?"●":"○")
+              );
+            })
+          );
+        })
+      )
+    )
+  );
+}
+
+/* ─── CLICK OUTSIDE HOOK ── */
+function useClickOutside(ref, onClose){
+  useEffect(()=>{
+    function handler(e){
+      if(ref.current&&!ref.current.contains(e.target)) onClose();
+    }
+    document.addEventListener("mousedown", handler);
+    return ()=>document.removeEventListener("mousedown", handler);
+  },[onClose]);
+}
+
+/* ─── FRANJAS EDITOR INLINE WRAPPER ── */
+function FranjasEditorInline({franjas,onSave}){
+  const [saved,setSaved]=useState(false);
+  function handleSave(v){
+    onSave(v);
+    setSaved(true);
+    setTimeout(()=>setSaved(false),2000);
+  }
+  return e(React.Fragment,null,
+    e(FranjasEditor,{franjas,onSave:handleSave,inline:true}),
+    saved&&e("div",{style:{marginTop:8,fontSize:11,color:"var(--ok-text)",fontWeight:500}},"✓ Guardado")
+  );
+}
+
 /* ─── SETTINGS ── */
-function SettingsModal({data,setData,isDark,themeId,setThemeId,appMode,userEmail,driveConnected,onClose,onReset,handleDriveConnect,handleDriveDisconnect,initialTab}){
+function SettingsModal({data,setData,isDark,themeId,setThemeId,appMode,userEmail,driveConnected,onClose,onReset,handleDriveConnect,handleDriveDisconnect,initialTab,franjas,onSaveFranjas}){
   const [tab,setTab]=useState(initialTab||"materias");
   const [editM,setEditM]=useState(null);
   const [editT,setEditT]=useState(null);
@@ -721,6 +858,7 @@ function SettingsModal({data,setData,isDark,themeId,setThemeId,appMode,userEmail
   const tabs=[
     {id:"materias",label:"Materias"},
     {id:"tipos",label:"Tipos"},
+    {id:"horarios",label:"Horarios"},
     {id:"tema",label:"Tema"},
   ];
 
@@ -773,6 +911,14 @@ function SettingsModal({data,setData,isDark,themeId,setThemeId,appMode,userEmail
           editT===null&&e("button",{className:"sadd",onClick:()=>{setEditT({_new:true,label:"",icon:"📌",bg:"#eae8f6",accent:"#4e47b8"});setEditM(null);}},"+ Agregar tipo de tarea")
         ),
 
+        // ── HORARIOS ──
+        tab==="horarios"&&e("div",null,
+          e("div",{style:{marginBottom:10,fontSize:12,color:"var(--text2)"}},
+            "Definí en qué horario empieza cada franja del día."
+          ),
+e(FranjasEditorInline,{franjas:franjas||getFranjas(),onSave:onSaveFranjas})
+        ),
+
         // ── TEMA ──
         tab==="tema"&&e("div",null,
           e("div",{style:{marginBottom:10,fontSize:11,color:"var(--text2)"}},"Seleccioná el tema visual de la app:"),
@@ -806,7 +952,7 @@ function MateriaForm({m,onSave,onCancel}){
   const [f,setF]=useState({
     nombre:m.nombre||"",codigo:m.codigo||"",color:m.color||"#4e47b8",
     anio:m.anio||curYear,periodo:m.periodo||"c1",
-    horasMin:m.horasMin||0,horasMax:m.horasMax||0,
+    horasMin:m.horasMin||0,horasMax:m.horasMax||0,slots:m.slots||[],
     ...(m.id?{id:m.id}:{})
   });
   const [err,setErr]=useState("");
@@ -837,7 +983,7 @@ function MateriaForm({m,onSave,onCancel}){
         )
       )
     ),
-    e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}},
+    e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}},
       e("div",{className:"fg",style:{marginBottom:0}},
         e("label",{className:"fl"},"HORAS/SEMANA MÍN"),
         e("input",{className:"fi",type:"number",min:0,max:40,value:f.horasMin||0,onChange:ev=>setF(x=>({...x,horasMin:parseInt(ev.target.value)||0}))})
@@ -846,6 +992,10 @@ function MateriaForm({m,onSave,onCancel}){
         e("label",{className:"fl"},"HORAS/SEMANA MÁX"),
         e("input",{className:"fi",type:"number",min:0,max:40,value:f.horasMax||0,onChange:ev=>setF(x=>({...x,horasMax:parseInt(ev.target.value)||0}))})
       )
+    ),
+    e("div",{className:"fg",style:{marginBottom:14}},
+      e("label",{className:"fl",style:{marginBottom:8,display:"block"}},"HORARIO DE ESTUDIO"),
+      e(SlotGrid,{slots:f.slots||[],onChange:slots=>setF(x=>({...x,slots}))})
     ),
     e("div",{style:{display:"flex",gap:6,justifyContent:"flex-end"}},
       e("button",{className:"cancbtn",onClick:onCancel},"Cancelar"),
@@ -895,6 +1045,8 @@ function ChecklistEditor({items,onChange}){
 
 /* ─── DATOS BUTTON ── */
 function DatosBtn({data,dirty,onExported,imp,driveConnected,syncStatus,autoSave,showSync,setShowSync,handleDriveConnect,handleDriveDisconnect,handleDriveSaveNow,handleDriveLoad,toggleAutoSave,onReset,userEmail}){
+  const ref=useRef(null);
+  useClickOutside(ref,()=>setShowSync(false));
 
   function doExport(){
     const ts=new Date().toISOString().slice(0,16).replace("T","_").replace(/:/g,"-");
@@ -913,7 +1065,7 @@ function DatosBtn({data,dirty,onExported,imp,driveConnected,syncStatus,autoSave,
     else{                      badgeClass="datos-badge datos-badge-ok";      badgeText="✓"; }
   } else if(dirty){            badgeClass="datos-badge datos-badge-dirty";   badgeText="●"; }
 
-  return e("div",{className:"sync-wrap"},
+  return e("div",{className:"sync-wrap",ref},
     e("button",{className:"datos-btn",onClick:()=>setShowSync(!showSync),title:"Gestionar datos"},
       "💾 Datos",
       badgeText&&e("span",{className:badgeClass},badgeText)
@@ -1033,17 +1185,20 @@ function ConfigBtn({onOpenSettings}){
 /* ─── PERIODO SELECTOR ── */
 function PeriodoSelector({anios,fAnio,fPeriodos,setFAnio,togglePeriodo}){
   const [open,setOpen]=useState(false);
+  const ref=useRef(null);
+  useClickOutside(ref,()=>setOpen(false));
 
   // Build label for button: "2026 · C1, Anual" etc
   const anioLabel=fAnio==="all"?"Todos":fAnio;
   const periodosLabel=fPeriodos.length===3?"Todos los períodos":fPeriodos.map(p=>p==="c1"?"C1":p==="c2"?"C2":"Anual").join(", ");
 
-  return e("div",{className:"periodo-sel",style:{marginRight:"auto"}},
+  return e("div",{className:"periodo-sel",style:{marginRight:"auto"},ref},
     e("button",{className:"iconbtn periodo-trigger",onClick:()=>setOpen(!open),title:"Filtrar por período"},
       "◷ ",
       e("span",{style:{color:"var(--text0)",fontWeight:500}},anioLabel),
-      e("span",{style:{color:"var(--text2)",margin:"0 3px"}},"/"),
-      e("span",{style:{color:"var(--text1)"}},periodosLabel)
+      fPeriodos.length<3&&e("span",{style:{color:"var(--text2)",margin:"0 3px 0 2px"}},
+        " · "+fPeriodos.map(p=>p==="c1"?"C1":p==="c2"?"C2":"Anual").join(", ")
+      )
     ),
     open&&e("div",{className:"periodo-popover"},
       // Año
@@ -1084,7 +1239,7 @@ function App(){
     return EMPTY_DATA; // welcome screen
   });
   const [isDemo,setIsDemo]=useState(false);
-  const [view,setView]=useState("backlog");
+  const [view,setView]=useState(()=>localStorage.getItem("uai-last-view")||"hoy");
   const [fm,setFm]=useState("all");
   const [ft,setFt]=useState("all");
   const [calM,setCalM]=useState(new Date(2026,2,1));
@@ -1092,15 +1247,35 @@ function App(){
   const [selId,setSelId]=useState(null);
   const [form,setForm]=useState(null);
   const [settings,setSettings]=useState(false);
-  const [fAnio,setFAnio]=useState("all");
-  const [fPeriodos,setFPeriodos]=useState(["c1","c2","anual"]);
+  const [fAnio,setFAnio]=useState(()=>{
+    const saved=localStorage.getItem("uai-filtro-anio");
+    if(saved) return isNaN(saved)?saved:parseInt(saved);
+    return new Date().getFullYear();
+  });
+  const [fPeriodos,setFPeriodos]=useState(()=>{
+    try{ const s=localStorage.getItem("uai-filtro-periodos"); return s?JSON.parse(s):["c1","c2","anual"]; }
+    catch(e){ return ["c1","c2","anual"]; }
+  });
   // Drive state
   const [driveConnected,setDriveConnected]=useState(false); // always start disconnected, reconnect silently
   const [driveConflict,setDriveConflict]=useState(null); // {driveData, localData}
   const [syncStatus,setSyncStatus]=useState("idle"); // idle | saving | saved | error
   const [syncMsg,setSyncMsg]=useState("");
   const [autoSave,setAutoSave]=useState(()=>localStorage.getItem("uai-autosave")==="true");
+  const [franjas,setFranjas]=useState(()=>getFranjas());
+  function saveFranjas(newFranjas){
+    setFranjas(newFranjas);
+    localStorage.setItem("uai-franjas",JSON.stringify(newFranjas));
+  }
   const [showSync,setShowSync]=useState(false);
+  const [editObjetivoM,setEditObjetivoM]=useState(null);
+  const [showHelp,setShowHelp]=useState(()=>{
+    return !localStorage.getItem("uai-guia-vista");
+  });
+  function closeHelp(){
+    localStorage.setItem("uai-guia-vista","true");
+    setShowHelp(false);
+  }
   const autoSaveTimer=useRef(null);
   // Pomodoro state
   const [pomoSession,setPomoSession]=useState(null);
@@ -1112,6 +1287,11 @@ function App(){
   const [dirty,setDirty]=useState(false);
 
   useEffect(()=>{applyTheme(themeId);},[themeId]);
+  useEffect(()=>{
+    window.__openSettings=(tab)=>setSettings(tab||"materias");
+    return()=>{delete window.__openSettings;};
+  },[]);
+  useEffect(()=>{localStorage.setItem("uai-last-view",view);},[view]);
 
   useEffect(()=>{setDirty(hashData(data)!==lastExp.current);},[data]);
   useEffect(()=>{
@@ -1283,8 +1463,8 @@ function App(){
   function toggleAutoSave(v){
     setAutoSave(v); localStorage.setItem("uai-autosave",v?"true":"false");
   }
-  function editMateriaHoras(materiaId, horasMin, horasMax){
-    setData(d=>({...d,materias:d.materias.map(m=>m.id===materiaId?{...m,horasMin,horasMax}:m)}));
+  function editMateriaHoras(materiaId, horasMin, horasMax, slots){
+    setData(d=>({...d,materias:d.materias.map(m=>m.id===materiaId?{...m,horasMin,horasMax,slots:slots||m.slots||[]}:m)}));
   }
   function saveManualSession(ses, quickTask){
     setData(d=>({
@@ -1297,6 +1477,7 @@ function App(){
   function enterLocal(){
     localStorage.setItem(LS_MODE_KEY,"local");
     setAppMode("local");
+    if(!localStorage.getItem("uai-guia-vista")) setShowHelp(true);
     const saved=loadFromLS(null);
     if(saved){ setData(saved); lastExp.current=hashData(saved); }
     else { setData(EMPTY_DATA); lastExp.current=hashData(EMPTY_DATA); }
@@ -1383,6 +1564,10 @@ function App(){
   // años disponibles en los datos
   const aniosDisponibles=useMemo(()=>[...new Set(data.materias.map(m=>m.anio).filter(Boolean))].sort(),[data.materias]);
 
+  // Persist period filter changes
+  useEffect(()=>{ localStorage.setItem("uai-filtro-anio",String(fAnio)); },[fAnio]);
+  useEffect(()=>{ localStorage.setItem("uai-filtro-periodos",JSON.stringify(fPeriodos)); },[fPeriodos]);
+
   function togglePeriodo(pid){
     setFPeriodos(prev=>prev.includes(pid)
       ?prev.length>1?prev.filter(x=>x!==pid):prev  // no dejar vacío
@@ -1405,12 +1590,25 @@ function App(){
       e("span",{className:"logo"},"◈ UAI Planner"),
 
       e(PeriodoSelector,{anios:aniosDisponibles,fAnio,fPeriodos,setFAnio,togglePeriodo}),
-      e("nav",{className:"nav"},
-        [["backlog","≡ Backlog"],["kanban","⬡ Kanban"],["calendar","◷ Calendario"],["materias","◉ Materias"]].map(([v,l])=>
-          e("button",{key:v,className:"nb "+(view===v?"nba":""),onClick:()=>setView(v)},l)
+      e("nav",{className:"nav",style:{marginLeft:24}},
+        e("div",{style:{display:"flex",gap:0,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:7,padding:3}},
+          [["hoy","◈ Hoy"],["materias","◉ Materias"]].map(([v,l])=>
+            e("button",{key:v,className:"nb "+(view===v?"nba":""),onClick:()=>setView(v)},l)
+          )
+        ),
+        e("div",{style:{width:16}}),
+        e("div",{style:{display:"flex",gap:0,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:7,padding:3}},
+          [["backlog","≡ Backlog"],["kanban","⬡ Kanban"],["calendar","◷ Calendario"]].map(([v,l])=>
+            e("button",{key:v,className:"nb "+(view===v?"nba":""),onClick:()=>setView(v)},l)
+          )
         )
       ),
       e("div",{className:"hdr-btns"},
+        e("button",{
+          className:"iconbtn",
+          onClick:()=>setShowHelp(true),
+          title:"Guía de uso"
+        },"?"),
         e(ConfigBtn,{onOpenSettings:(tab)=>setSettings(tab||"materias")}),
         e(DatosBtn,{
           data,dirty,onExported,imp,
@@ -1422,7 +1620,7 @@ function App(){
       )
     ),
     impErr&&e("div",{className:"errbanner"},"⚠ "+impErr),
-    view!=="materias"&&e("div",{className:"fbar"},
+    view!=="materias"&&view!=="hoy"&&e("div",{className:"fbar"},
       e("select",{value:fm,onChange:ev=>setFm(ev.target.value)},
         e("option",{value:"all"},"Todas las materias"),
         materiasFiltradas.map(m=>e("option",{key:m.id,value:m.id},m.nombre+(periodoTag(m)?" — "+periodoTag(m):"")))
@@ -1435,6 +1633,7 @@ function App(){
       e("button",{className:"newbtn",onClick:()=>setForm({})},"+ Nueva tarea")
     ),
     e("div",{className:"main"},
+      view==="hoy"      &&e(HoyView,{materias:materiasFiltradas,sesiones:data.sesiones||[],tareas:data.tareas,isDark,onStartPomo:startPomoFromMateria,mmap,tmap,onEditObjetivos:setEditObjetivoM,franjas,onSaveFranjas:saveFranjas,onEditMateria:editMateriaHoras}),
       view==="backlog"  &&e(Backlog,  {tareas:filtered,mmap,tmap,isDark,move,onSel:id=>setSelId(id)}),
       view==="kanban"   &&e(Kanban,   {tareas:filtered,mmap,tmap,isDark,move,onSel:id=>setSelId(id)}),
       view==="calendar" &&e(Cal,      {tareas:filtered,mmap,tmap,isDark,month:calM,setMonth:setCalM,onSel:id=>setSelId(id)}),
@@ -1448,7 +1647,8 @@ function App(){
       onClose:()=>setSettings(false),
       onReset:()=>setResetModal(true),
       handleDriveConnect,handleDriveDisconnect,
-      initialTab:typeof settings==="string"?settings:"materias"
+      initialTab:typeof settings==="string"?settings:"materias",
+      franjas,onSaveFranjas:saveFranjas
     }),
     e(UnsavedToast,{dirty,driveConnected,isDemo}),
     driveConflict&&e(DriveConflictModal,{
@@ -1472,10 +1672,29 @@ function App(){
       onResetSample:doResetSample,
       onClose:()=>{setResetModal(false);setResetConfirm(null);}
     }),
+    showHelp&&e(HelpGuide,{onClose:closeHelp}),
+    editObjetivoM&&e("div",{className:"ov",onClick:()=>setEditObjetivoM(null)},
+      e("div",{className:"mod",style:{maxWidth:640},onClick:ev=>ev.stopPropagation()},
+        e("div",{className:"mhd"},
+          e("div",{style:{width:10,height:10,borderRadius:"50%",background:editObjetivoM.color,flexShrink:0,marginTop:2}}),
+          e("span",{className:"mtit"},"Objetivos — "+editObjetivoM.nombre),
+          e("button",{className:"mclose",onClick:()=>setEditObjetivoM(null)},"✕")
+        ),
+        e("div",{className:"mbody"},
+          e(HorasEditor,{m:editObjetivoM,
+            onSave:(minV,maxV,slots)=>{
+              editMateriaHoras(editObjetivoM.id,minV,maxV,slots);
+              setEditObjetivoM(null);
+            },
+            onCancel:()=>setEditObjetivoM(null)
+          })
+        )
+      )
+    ),
     pomoContext&&e(PomoContextPopup,{materia:pomoContext,tareas:data.tareas,tipos,onStart:handlePomoContextStart,onClose:()=>setPomoContext(null)}),
     manualSession&&e(ManualSessionModal,{materia:manualSession,tareas:data.tareas,onSave:saveManualSession,onClose:()=>setManualSession(null)}),
 
-    pomoSession&&e(PomoWidget,{session:pomoSession,mmap,tmap,tareaObj:pomoSession.tareaId?data.tareas.find(t=>t.id===pomoSession.tareaId):null,onStop:stopPomo,onCancel:()=>setPomoSession(null)}),
+    pomoSession&&e(PomoWidget,{session:pomoSession,mmap,tmap,tareaObj:pomoSession.tareaId?data.tareas.find(t=>t.id===pomoSession.tareaId):null,onStop:stopPomo,onCancel:()=>setPomoSession(null),materias:data.materias,sesiones:data.sesiones||[]}),
     e(SchemaHint,null)
   );
 }
@@ -1638,7 +1857,7 @@ function TaskModal({task,mat,tipo,isDark,move,toggleItem,onStartPomo,sesiones,on
   const progColor=pct!==null?progressColor(pct,isDark):null;
 
   return e("div",{className:"ov",onClick:onClose},
-    e("div",{className:"mod",style:{maxWidth:520},onClick:ev=>ev.stopPropagation()},
+    e("div",{className:"mod",style:{maxWidth:640},onClick:ev=>ev.stopPropagation()},
       e("div",{className:"mhd",style:{borderBottom:`1px solid ${mat?.color||"var(--border)"}44`}},
         e("span",{style:{fontSize:24}},tp.icon),
         e("div",{style:{flex:1}},
@@ -1849,7 +2068,54 @@ function PomoContextPopup({materia,tareas,tipos,onStart,onClose}){
 }
 
 /* ─── POMODORO FOCUS MODE ── */
-function PomoWidget({session,mmap,tareaObj,onStop,onCancel}){
+function calcSlotObjetivo(session,materias,sesiones){
+  const m=materias.find(x=>x.id===session.materiaId);
+  if(!m) return null;
+  const slots=(m.slots||[]);
+  const totalSlots=slots.length;
+  if(!totalSlots) return null;
+  const minH=m.horasMin||0, maxH=m.horasMax||0;
+  if(!minH&&!maxH) return null;
+
+  // Simple: divide equally
+  const simpleMin=Math.round(minH/totalSlots*60); // mins
+  const simpleMax=Math.round(maxH/totalSlots*60);
+
+  // Ponderado: remaining hours / remaining slots this week
+  function getWeekStart(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d;}
+  const weekStart=getWeekStart();
+  const doneThisWeek=(sesiones||[])
+    .filter(s=>s.materiaId===m.id&&new Date(s.inicio)>=weekStart)
+    .reduce((a,s)=>a+s.minutos,0);
+  const doneH=doneThisWeek/60;
+
+  // Remaining slots this week (from today onwards)
+  const dia=getDiaActual();
+  const momento=getMomentoActual();
+  const franjaIds=Object.keys(getFranjas());
+  const momentoIdx=franjaIds.indexOf(momento);
+  const diaIds=DIAS.map(d=>d.id);
+  const diaIdx=diaIds.indexOf(dia);
+  const remainingSlots=slots.filter(s=>{
+    const sd=diaIds.indexOf(s.dia);
+    if(sd>diaIdx) return true;
+    if(sd===diaIdx) return franjaIds.indexOf(s.momento)>=momentoIdx;
+    return false;
+  }).length||1;
+
+  const pondMin=Math.max(0,Math.round((minH-doneH)/remainingSlots*60));
+  const pondMax=Math.max(0,Math.round((maxH-doneH)/remainingSlots*60));
+
+  return {simpleMin,simpleMax,pondMin,pondMax,totalSlots,remainingSlots,doneThisWeek};
+}
+
+function fmtMin(m){
+  if(!m) return "0min";
+  const h=Math.floor(m/60),mn=m%60;
+  return h>0?(mn>0?`${h}h ${mn}min`:`${h}h`):`${mn}min`;
+}
+
+function PomoWidget({session,mmap,tareaObj,onStop,onCancel,materias,sesiones}){
   const [studySecs,setStudySecs]=useState(0);
   const [pauseSecs,setPauseSecs]=useState(0);
   const [paused,setPaused]=useState(false);
@@ -1859,8 +2125,8 @@ function PomoWidget({session,mmap,tareaObj,onStop,onCancel}){
 
   useEffect(()=>{
     studyRef.current=setInterval(()=>{
-      if(!paused) setStudySecs(s=>s+1);
-    },1000);
+      if(!paused) setStudySecs(s=>s+0.1);
+    },100);
     return()=>clearInterval(studyRef.current);
   },[paused]);
 
@@ -1875,9 +2141,12 @@ function PomoWidget({session,mmap,tareaObj,onStop,onCancel}){
   },[paused]);
 
   const mat=mmap[session.materiaId];
+  const slotObj=calcSlotObjetivo(session,materias||[],sesiones||[]);
+  const [showTooltip,setShowTooltip]=useState(null);
   function fmt(n){return String(n).padStart(2,"0");}
   function fmtSecs(s){
-    return`${fmt(Math.floor(s/3600))}:${fmt(Math.floor((s%3600)/60))}:${fmt(s%60)}`;
+    const si=Math.floor(s);
+    return`${fmt(Math.floor(si/3600))}:${fmt(Math.floor((si%3600)/60))}:${fmt(si%60)}`;
   }
 
   return e("div",{className:"pomo-focus-overlay"},
@@ -1885,7 +2154,17 @@ function PomoWidget({session,mmap,tareaObj,onStop,onCancel}){
 
       // Status badge
       e("div",{className:"pomo-status-badge "+(paused?"pomo-status-paused":"pomo-status-active")},
-        paused?"◎ EN PAUSA":"◉ EN SESIÓN"
+        paused
+          ? "◎ EN PAUSA"
+          : e(React.Fragment,null,
+              e("span",{style:{
+                display:"inline-block",width:8,height:8,borderRadius:"50%",
+                background:"var(--ok-text)",marginRight:7,verticalAlign:"middle",
+                animation:"pomo-pulse 1.5s ease-in-out infinite",
+                boxShadow:"0 0 0 0 var(--ok-text)"
+              }}),
+              "EN SESIÓN"
+            )
       ),
 
       // Materia + tarea
@@ -1915,6 +2194,153 @@ function PomoWidget({session,mmap,tareaObj,onStop,onCancel}){
         : e("div",{style:{height:60}}),
 
       // Actions
+      // Slot objective bar
+      slotObj&&e("div",{style:{width:"100%",marginBottom:20}},
+        // Weekly context line
+        e("div",{style:{
+          display:"flex",alignItems:"center",justifyContent:"center",gap:10,
+          marginBottom:10,padding:"6px 14px",
+          background:"var(--bg2)",borderRadius:6,fontSize:10,color:"var(--text2)"
+        }},
+          e("span",null,"Semana: "),
+          e("span",{style:{color:"var(--text0)",fontWeight:600}},
+            fmtMin(Math.round((slotObj.doneThisWeek||0)))+" cursados"
+          ),
+          e("span",{style:{color:"var(--text3)"}},"·"),
+          e("span",null,
+            "objetivo "+fmtMin(slotObj.simpleMin*slotObj.totalSlots)+"–"+fmtMin(slotObj.simpleMax*slotObj.totalSlots)
+          ),
+          e("span",{style:{color:"var(--text3)"}},"·"),
+          e("span",null,slotObj.totalSlots+" slot"+(slotObj.totalSlots!==1?"s":""))
+        ),
+        e("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:8}},
+          e("span",{style:{fontSize:11,color:"var(--text2)",fontWeight:500}},"Objetivo del slot")
+        ),
+        // Click outside overlay
+        showTooltip&&e("div",{
+          style:{position:"fixed",inset:0,zIndex:9},
+          onClick:()=>setShowTooltip(null)
+        }),
+        // Ruler + single bar
+        (()=>{
+          const mins=studySecs/60;
+          const scale=Math.max(slotObj.simpleMax,slotObj.pondMax||0)*1.2||1;
+          const pct=Math.min(100,Math.round(mins/scale*100));
+          const exceeded=mins>slotObj.simpleMax;
+          const barColor=exceeded?"var(--accent)":
+            mins>=slotObj.simpleMin?"var(--ok-text)":
+            mins>=slotObj.pondMin?"var(--warn-text)":"var(--info-text)";
+
+          function renderRuler(label,min,max,color,tooltipKey){
+            const minPct=Math.round(min/scale*100);
+            const maxPct=max>0?Math.round(max/scale*100):100;
+            const LABEL_W=72;
+            return e("div",{style:{position:"relative",height:28,width:"100%"}},
+              // Label + ⓘ
+              e("div",{style:{position:"absolute",left:0,top:4,display:"flex",alignItems:"center",gap:3}},
+                e("span",{style:{fontSize:9,color:"var(--text2)",fontWeight:600,width:LABEL_W-12}},label),
+                e("span",{
+                  style:{fontSize:10,color:"var(--accent)",cursor:"pointer",position:"relative",zIndex:10},
+                  onClick:ev=>{ev.stopPropagation();setShowTooltip(showTooltip===tooltipKey?null:tooltipKey);}
+                },"ⓘ",
+                  showTooltip===tooltipKey&&e("div",{style:{
+                    position:"absolute",bottom:"calc(100% + 6px)",left:0,
+                    background:"var(--bg0)",border:"1px solid var(--border2)",borderRadius:6,
+                    padding:"10px 12px",width:260,fontSize:10,color:"var(--text1)",
+                    lineHeight:1.7,zIndex:20,boxShadow:"0 4px 12px rgba(0,0,0,.2)",textAlign:"left"
+                  }},
+                    tooltipKey==="simple"
+                    ? e(React.Fragment,null,
+                        e("div",{style:{fontWeight:600,marginBottom:6,color:"var(--text0)"}},"Objetivo simple"),
+                        e("div",{style:{marginBottom:6}},"Divide el objetivo semanal en partes iguales entre todos tus slots, sin importar cuánto ya estudiaste."),
+                        e("div",{style:{color:"var(--text2)",fontStyle:"italic"}},"Ejemplo: objetivo 3h–6h con 3 slots → cada slot es 1h–2h, siempre igual.")
+                      )
+                    : e(React.Fragment,null,
+                        e("div",{style:{fontWeight:600,marginBottom:6,color:"var(--text0)"}},"Objetivo ponderado"),
+                        e("div",{style:{marginBottom:6}},"Toma las horas que te faltan y las divide entre los slots restantes. Se adapta dinámicamente."),
+                        e("div",{style:{marginBottom:4,color:"var(--text2)",fontStyle:"italic"}},"Ejemplo: objetivo 3h mín, ya estudiaste 1h30 esta semana, quedan 2 slots → este slot es 45min mín."),
+                        e("div",{style:{color:"var(--text2)",fontStyle:"italic"}},"Si superaste el máximo, puede llegar a 0.")
+                      )
+                  )
+                )
+              ),
+              // Tick line
+              e("div",{style:{
+                position:"absolute",bottom:4,left:LABEL_W,right:0,
+                height:1,background:"var(--border2)"
+              }}),
+              // Min tick
+              min>0
+              ? e("div",{style:{
+                  position:"absolute",bottom:4,
+                  left:"calc("+LABEL_W+"px + "+minPct+"% * (1 - "+LABEL_W+"px/100%))",
+                  transform:"translateX(-50%)"
+                }},
+                  e("div",{style:{width:1,height:7,background:color,margin:"0 auto"}}),
+                  e("div",{style:{fontSize:7,color:color,whiteSpace:"nowrap",textAlign:"center",marginTop:1}},fmtMin(min)+" mín")
+                )
+              : e("div",{style:{
+                  position:"absolute",bottom:14,left:LABEL_W+4,
+                  fontSize:7,color:"var(--ok-text)",fontWeight:600,whiteSpace:"nowrap"
+                }},"✓ mín cumplido"),
+              // Max tick
+              max>0&&e("div",{style:{
+                position:"absolute",bottom:4,
+                left:"calc("+LABEL_W+"px + "+maxPct+"% * (1 - "+LABEL_W+"px/100%))",
+                transform:"translateX(-50%)"
+              }},
+                e("div",{style:{width:1,height:7,background:"var(--text2)",margin:"0 auto"}}),
+                e("div",{style:{fontSize:7,color:"var(--text2)",whiteSpace:"nowrap",textAlign:"center",marginTop:1}},fmtMin(max)+" máx")
+              ),
+              // Checkmark
+              mins>=min&&e("span",{style:{
+                position:"absolute",right:0,top:2,fontSize:10,
+                color:"var(--ok-text)",fontWeight:700
+              }},"✓")
+            );
+          }
+
+          return e("div",{style:{width:"100%",padding:"0 4px"}},
+            renderRuler("Simple",slotObj.simpleMin,slotObj.simpleMax,"var(--info-text)","simple"),
+            // Single bar
+            e("div",{style:{
+              height:14,marginLeft:72,marginTop:2,marginBottom:2,
+              background:"var(--border)",borderRadius:7,overflow:"hidden"
+            }},
+              e("div",{style:{
+                height:"100%",width:pct+"%",
+                background:barColor,borderRadius:7,
+                transition:"width 1.1s linear"
+              }})
+            ),
+            slotObj.pondMax===0
+              ? e("div",{style:{display:"flex",alignItems:"center",gap:6,marginTop:4}},
+                  e("span",{style:{fontSize:9,color:"var(--text2)",fontWeight:600,width:72-12}},"Ponderado"),
+                  e("span",{
+                    style:{fontSize:10,color:"var(--accent)",cursor:"pointer",position:"relative",zIndex:10},
+                    onClick:ev=>{ev.stopPropagation();setShowTooltip(showTooltip==="pond"?null:"pond");}
+                  },"ⓘ",
+                    showTooltip==="pond"&&e("div",{style:{
+                      position:"absolute",bottom:"calc(100% + 6px)",left:0,
+                      background:"var(--bg0)",border:"1px solid var(--border2)",borderRadius:6,
+                      padding:"10px 12px",width:260,fontSize:10,color:"var(--text1)",
+                      lineHeight:1.7,zIndex:20,boxShadow:"0 4px 12px rgba(0,0,0,.2)"
+                    }},
+                      e("div",{style:{fontWeight:600,marginBottom:6,color:"var(--text0)"}},"Objetivo ponderado"),
+                      e("div",{style:{marginBottom:6}},"Toma las horas que te faltan y las divide entre los slots restantes. Se adapta dinámicamente."),
+                      e("div",{style:{color:"var(--text2)",fontStyle:"italic"}},"Ya superaste el máximo semanal — cualquier tiempo adicional es extra.")
+                    )
+                  ),
+                  e("span",{style:{fontSize:10,color:"var(--ok-text)",fontWeight:600,marginLeft:6}},"✓ Ya cumpliste el máximo semanal")
+                )
+              : renderRuler("Ponderado",slotObj.pondMin,slotObj.pondMax,"var(--warn-text)","pond"),
+            exceeded&&e("div",{style:{fontSize:10,color:"var(--accent)",fontWeight:500,
+              marginTop:6,textAlign:"center"}},
+              "✓ Superaste el máximo — "+fmtMin(Math.round(mins-slotObj.simpleMax))+" extra"
+            )
+          );
+        })()
+      ),
       e("div",{className:"pomo-focus-actions"},
         e("button",{className:"pomo-action-btn pomo-btn-pause",onClick:()=>setPaused(p=>!p)},
           paused?"▶ Retomar":"⏸ Pausar"
@@ -2064,6 +2490,10 @@ function MateriasView({materias,sesiones,tareas,tmap,isDark,onStartPomo,onEditMa
   const semColor={red:"#e74c3c",yellow:"#e0a030",green:"#27ae60",gray:"#888"};
 
   return e("div",{style:{paddingBottom:32}},
+    // Hint
+    e("div",{style:{fontSize:10,color:"var(--text3)",marginBottom:8,fontStyle:"italic"}},
+      "Hacé click en una materia para ver sesiones, tareas y editar objetivos"
+    ),
     // Header labels
     e("div",{style:{display:"flex",alignItems:"center",gap:12,padding:"4px 14px",
       fontSize:9,color:"var(--text3)",letterSpacing:".08em",fontWeight:600,marginBottom:4}},
@@ -2072,6 +2502,23 @@ function MateriasView({materias,sesiones,tareas,tmap,isDark,onStartPomo,onEditMa
       e("span",{style:{width:180,textAlign:"center"}},"ESTA SEMANA"),
       e("span",{style:{width:80,textAlign:"right"}},"ESTADO"),
       e("span",{style:{width:22}})
+    ),
+
+    // Empty state
+    materias.length===0&&e("div",{style:{
+      textAlign:"center",padding:"56px 24px",color:"var(--text2)"
+    }},
+      e("div",{style:{fontSize:36,marginBottom:12}},"📚"),
+      e("div",{style:{fontSize:15,fontWeight:500,color:"var(--text0)",marginBottom:6}},
+        "Todavía no tenés materias cargadas"
+      ),
+      e("div",{style:{fontSize:12,color:"var(--text3)",marginBottom:20}},
+        "Agregá tus materias para empezar a planificar tu semana"
+      ),
+      e("button",{
+        className:"newbtn",
+        onClick:()=>window.__openSettings&&window.__openSettings("materias")
+      },"+ Agregar primera materia")
     ),
 
     // Each materia as standalone block
@@ -2133,11 +2580,11 @@ function MateriasView({materias,sesiones,tareas,tmap,isDark,onStartPomo,onEditMa
           ),
           isActive&&e("div",{style:{width:80}}),
           // Chevron
-          e("span",{style:{width:22,textAlign:"center",fontSize:11,
+          e("span",{className:"mat-chevron",style:{width:22,textAlign:"center",fontSize:11,
             color:isActive?"var(--accent)":"var(--text3)",
             display:"inline-block",
             transform:isActive?"rotate(90deg)":"rotate(0deg)",
-            transition:"transform .2s"
+            transition:"transform .2s, color .12s"
           }},"▶")
         ),
 
@@ -2241,10 +2688,10 @@ function MateriasDetail({m,sesiones,tareas,isDark,onStartPomo,onEditMateria,onMa
       e("button",{className:"ibtn",style:{fontSize:11,padding:"4px 10px"},
         onClick:()=>setEditingHoras(!editingHoras)},
         editingHoras?"✕ Cerrar":"✎ Objetivos"),
+      e("div",{style:{flex:1}}),
       e("button",{className:"ibtn",style:{fontSize:11,padding:"4px 10px"},
         onClick:()=>{if(onManualSession)onManualSession(m);}},
         "+ Cargar horas"),
-      e("div",{style:{flex:1}}),
       e("button",{className:"pomo-start-mat-btn",
         style:{padding:"5px 16px",borderColor:m.color+"66",color:m.color,
           borderRadius:5,fontSize:12,width:"auto"},
@@ -2254,7 +2701,7 @@ function MateriasDetail({m,sesiones,tareas,isDark,onStartPomo,onEditMateria,onMa
     e("div",{style:{padding:"0 18px 18px"}},
     // Horas editor popup
     editingHoras&&e("div",{className:"ov",onClick:()=>setEditingHoras(false)},
-      e("div",{className:"mod",style:{maxWidth:340},onClick:ev=>ev.stopPropagation()},
+      e("div",{className:"mod",style:{maxWidth:640},onClick:ev=>ev.stopPropagation()},
         e("div",{className:"mhd"},
           e("div",{style:{width:10,height:10,borderRadius:"50%",background:m.color,flexShrink:0,marginTop:2}}),
           e("span",{className:"mtit"},"Objetivos semanales — "+m.nombre),
@@ -2262,7 +2709,7 @@ function MateriasDetail({m,sesiones,tareas,isDark,onStartPomo,onEditMateria,onMa
         ),
         e("div",{className:"mbody"},
           e(HorasEditor,{m,
-            onSave:(minV,maxV)=>{onEditMateria(m.id,minV,maxV);setEditingHoras(false);},
+            onSave:(minV,maxV,slots)=>{onEditMateria(m.id,minV,maxV,slots);setEditingHoras(false);},
             onCancel:()=>setEditingHoras(false)
           })
         )
@@ -2366,24 +2813,28 @@ function MateriasDetail({m,sesiones,tareas,isDark,onStartPomo,onEditMateria,onMa
 function HorasEditor({m,onSave,onCancel}){
   const [minV,setMinV]=useState(m.horasMin||0);
   const [maxV,setMaxV]=useState(m.horasMax||0);
+  const [slots,setSlots]=useState(m.slots||[]);
   const [err,setErr]=useState("");
   function go(){
     if(minV>maxV){setErr("El mínimo no puede superar el máximo");return;}
-    onSave(minV,maxV);
+    onSave(minV,maxV,slots);
   }
-  return e("div",{style:{background:"var(--bg0)",border:"1px solid var(--border)",borderRadius:5,padding:10,marginBottom:12}},
+  return e("div",{style:{background:"var(--bg0)",border:"1px solid var(--border)",borderRadius:5,padding:12,marginBottom:12}},
     err&&e("div",{style:{fontSize:10,color:"var(--err-text)",marginBottom:6}},err),
-    e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}},
+    e("div",{className:"fl",style:{marginBottom:6}},"HORAS SEMANALES"),
+    e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}},
       e("div",null,
-        e("label",{className:"fl",style:{display:"block",marginBottom:3}},"MÍN (hs/semana)"),
+        e("label",{className:"fl",style:{display:"block",marginBottom:3}},"MÍN"),
         e("input",{className:"fi",type:"number",min:0,max:40,value:minV,style:{padding:"5px 8px"},onChange:ev=>setMinV(parseInt(ev.target.value)||0)})
       ),
       e("div",null,
-        e("label",{className:"fl",style:{display:"block",marginBottom:3}},"MÁX (hs/semana)"),
+        e("label",{className:"fl",style:{display:"block",marginBottom:3}},"MÁX"),
         e("input",{className:"fi",type:"number",min:0,max:40,value:maxV,style:{padding:"5px 8px"},onChange:ev=>setMaxV(parseInt(ev.target.value)||0)})
       )
     ),
-    e("div",{style:{display:"flex",gap:6,justifyContent:"flex-end"}},
+    e("div",{className:"fl",style:{marginBottom:8}},"HORARIO DE ESTUDIO"),
+    e(SlotGrid,{slots,onChange:setSlots}),
+    e("div",{style:{display:"flex",gap:6,justifyContent:"flex-end",marginTop:10}},
       e("button",{className:"savebtn",onClick:go},"✓ Guardar objetivos")
     )
   );
@@ -2564,6 +3015,555 @@ function DriveConflictModal({conflict,onUseDrive,onUseLocal,onClose}){
         e("p",{style:{fontSize:10,color:"var(--text3)",marginTop:14,textAlign:"center"}},
           "Los datos que no elijas no se borran automáticamente."
         )
+      )
+    )
+  );
+}
+
+/* ─── HOY VIEW ── */
+function HoyView({materias,sesiones,tareas,isDark,onStartPomo,mmap,tmap,onEditObjetivos,franjas,onSaveFranjas,onEditMateria}){
+  const [now,setNow]=useState(new Date());
+  const [editFranjas,setEditFranjas]=useState(false);
+  const [showSemana,setShowSemana]=useState(false);
+  const [editSlotCell,setEditSlotCell]=useState(null); // {dia,fid}
+  const franjasLocal=franjas||getFranjas();
+  useEffect(()=>{
+    const t=setInterval(()=>setNow(new Date()),60000);
+    return()=>clearInterval(t);
+  },[]);
+
+  const dia=getDiaActual();
+  const momento=getMomentoActual();
+  // use prop franjas if provided, else read from localStorage
+  const franjaIds=Object.keys(franjas);
+  const momentoIdx=franjaIds.indexOf(momento);
+
+  // Materias para ahora
+  const ahoraM=materias.filter(m=>(m.slots||[]).some(s=>s.dia===dia&&s.momento===momento));
+  // Materias para más tarde hoy
+  const masTardeM=materias.filter(m=>
+    !ahoraM.includes(m)&&
+    (m.slots||[]).some(s=>s.dia===dia&&franjaIds.indexOf(s.momento)>momentoIdx)
+  );
+  // Semana: mins por materia
+  function getWeekStart(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d;}
+  const weekStart=getWeekStart();
+  const minsSemana=useMemo(()=>{
+    const mp={};
+    sesiones.forEach(s=>{if(new Date(s.inicio)>=weekStart)mp[s.materiaId]=(mp[s.materiaId]||0)+s.minutos;});
+    return mp;
+  },[sesiones]);
+
+  function fmtHora(){
+    return `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  }
+  const diasLabel=["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  const mesesLabel=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+  function MateriaCard({m,badge,badgeColor,onStartPomo,onEditObjetivos}){
+    const mins=minsSemana[m.id]||0;
+    const hs=parseFloat((mins/60).toFixed(1));
+    const minH=m.horasMin||0,maxH=m.horasMax||0;
+    const pct=maxH?Math.min(100,Math.round(hs/maxH*100)):0;
+    const tarPend=tareas.filter(t=>t.materiaId===m.id&&t.estado!=="completado");
+    const obligs=tarPend.filter(t=>t.obligatorio).length;
+    const semColor={red:"var(--err-text)",yellow:"var(--warn-text)",green:"var(--ok-text)",gray:"var(--text3)"};
+    const sem=!minH&&!maxH?"gray":hs>=maxH?"green":hs>=minH?"yellow":"red";
+    const c=semColor[sem];
+
+    return e("div",{style:{
+      background:"var(--bg1)",border:"1px solid var(--border)",
+      borderRadius:9,padding:16,borderLeft:`4px solid ${m.color}`
+    }},
+      e("div",{style:{marginBottom:10}},
+        e("div",{style:{fontSize:14,fontWeight:600,color:"var(--text0)",
+          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.nombre),
+        e("div",{style:{fontSize:10,color:"var(--text3)",marginTop:2}},
+          m.codigo+(periodoTag(m)?" · "+periodoTag(m):""))
+      ),
+      // Progress bar
+      (minH||maxH)&&e("div",{style:{marginBottom:10}},
+        e("div",{style:{display:"flex",justifyContent:"space-between",fontSize:10,
+          color:"var(--text2)",marginBottom:3}},
+          e("span","Esta semana"),
+          e("span",{style:{color:c,fontWeight:600}},hs+"h / "+minH+"–"+maxH+"h objetivo")
+        ),
+        e("div",{style:{height:5,background:"var(--border)",borderRadius:3,overflow:"hidden"}},
+          e("div",{style:{height:"100%",width:pct+"%",background:c,borderRadius:3,transition:"width .4s"}})
+        )
+      ),
+
+      e("button",{
+          onClick:()=>onStartPomo(m),
+          style:{width:"100%",background:"var(--info-bg)",border:"1px solid var(--accent)",
+            color:"var(--info-text)",padding:"8px 12px",borderRadius:6,cursor:"pointer",
+            fontFamily:"inherit",fontSize:12,fontWeight:700}
+        },"▶ Iniciar sesión de estudio")
+    );
+  }
+
+  return e("div",{style:{paddingBottom:32}},
+    // ── HEADER ──
+    e("div",{style:{marginBottom:20}},
+      e("div",{style:{fontSize:28,fontWeight:700,color:"var(--text0)",marginBottom:2}},fmtHora()),
+      e("div",{style:{fontSize:14,color:"var(--text2)"}},
+        `${diasLabel[now.getDay()]}, ${now.getDate()} de ${mesesLabel[now.getMonth()]} ${now.getFullYear()}`
+      ),
+      e("div",{style:{display:"flex",alignItems:"center",gap:6,marginTop:6,flexWrap:"wrap"}},
+        e("span",{style:{fontSize:13}},(franjasLocal[momento]||{}).emoji||""),
+        e("span",{style:{fontSize:13,color:"var(--text1)",fontWeight:500}},(franjasLocal[momento]||{}).label||""),
+        e("span",{style:{fontSize:11,color:"var(--text3)"}},"— ahora"),
+        e("button",{className:"sico",style:{width:20,height:20,fontSize:10,marginLeft:4},
+          title:"Editar franjas del día",onClick:()=>setEditFranjas(true)},"✎"),
+      ),
+      editFranjas&&e(FranjasEditor,{
+        franjas:franjasLocal,
+        onSave:v=>{onSaveFranjas(v);setEditFranjas(false);},
+        onClose:()=>setEditFranjas(false)
+      }),
+      e("div",{style:{marginTop:10,textAlign:"center"}},
+        Object.keys(franjasLocal).every(fid=>!materias.some(m=>(m.slots||[]).some(s=>s.dia===dia&&s.momento===fid)))&&
+          !showSemana&&e("div",{style:{fontSize:11,color:"var(--text3)",marginBottom:8,fontStyle:"italic"}},
+            "Sin materias asignadas para hoy — configurá tu horario desde Ver semana"
+          ),
+        e("button",{className:"ibtn",style:{fontSize:11,padding:"4px 16px"},
+          onClick:()=>setShowSemana(!showSemana)},
+          showSemana?"▲ Ocultar semana":"📅 Ver semana"
+        )
+      )
+    ),
+
+    // ── GRILLA SEMANAL ──
+    showSemana&&e("div",{style:{marginBottom:24}},
+      e("div",{style:{overflowX:"auto"}},
+        e("table",{style:{borderCollapse:"separate",borderSpacing:"4px",width:"100%",minWidth:500}},
+          e("thead",null,
+            e("tr",null,
+              e("th",{style:{width:70,fontSize:9,color:"var(--text3)",fontWeight:600,letterSpacing:".06em",textAlign:"left",paddingBottom:4}},""),
+              DIAS.map(d=>{
+                const isToday=d.id===dia;
+                return e("th",{key:d.id,style:{fontSize:10,fontWeight:isToday?700:500,
+                  color:isToday?"var(--accent)":"var(--text2)",textAlign:"center",paddingBottom:4,
+                  borderBottom:isToday?"2px solid var(--accent)":"2px solid transparent"}},d.label);
+              })
+            )
+          ),
+          e("tbody",null,
+            Object.entries(franjasLocal).map(([fid,f])=>
+              e("tr",{key:fid},
+                e("td",{style:{fontSize:10,color:"var(--text2)",paddingRight:6,whiteSpace:"nowrap",verticalAlign:"middle"}},f.emoji+" "+f.label),
+                DIAS.map(d=>{
+                  const isNow=d.id===dia&&fid===momento;
+                  const mats=materias.filter(m=>(m.slots||[]).some(s=>s.dia===d.id&&s.momento===fid));
+                  return e("td",{key:d.id,style:{padding:3,verticalAlign:"top",
+                    background:isNow?"var(--info-bg)":"transparent",borderRadius:5,
+                    border:isNow?"1px solid var(--accent)":"1px solid var(--border)",
+                    minWidth:64,height:36,position:"relative"}},
+                    mats.map(m=>e("div",{key:m.id,title:m.nombre,
+                      style:{fontSize:8,fontWeight:600,padding:"2px 4px",borderRadius:3,
+                        background:m.color+"28",color:m.color,border:`1px solid ${m.color}44`,
+                        marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}
+                    },m.nombre)),
+                    e("div",{
+                      onClick:()=>setEditSlotCell({dia:d.id,fid}),
+                      style:{position:"absolute",bottom:2,right:2,width:14,height:14,
+                        borderRadius:3,background:"var(--bg2)",border:"1px solid var(--border)",
+                        cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",
+                        fontSize:8,color:"var(--text3)",opacity:.7,transition:"opacity .1s"}
+                    },"✎")
+                  );
+                })
+              )
+            )
+          )
+        )
+      )
+    ),
+
+    // ── TRES SECCIONES: una por franja ──
+    Object.entries(franjasLocal).map(([fid,f])=>{
+      const matsEnFranja=materias.filter(m=>(m.slots||[]).some(s=>s.dia===dia&&s.momento===fid));
+      const isActive=fid===momento;
+      const opacity=isActive?1:0.45;
+
+      return e("div",{key:fid,style:{marginBottom:isActive?28:16,opacity,transition:"opacity .3s"}},
+        // Section header
+        e("div",{style:{fontSize:isActive?12:10,color:isActive?"var(--text1)":"var(--text3)",
+          letterSpacing:".1em",fontWeight:600,marginBottom:isActive?12:8,
+          display:"flex",alignItems:"center",gap:6}},
+          e("span",null,f.emoji),
+          e("span",null,f.label.toUpperCase()),
+          isActive&&e("span",{style:{color:"var(--accent)",fontSize:10,fontWeight:400,
+            letterSpacing:0}},"— ahora")
+        ),
+        // Cards
+        e(React.Fragment,{key:"cards"},
+        matsEnFranja.length===0&&e("div",{style:{
+          padding:isActive?"14px 16px":"8px 12px",
+          background:"var(--bg1)",border:"1px dashed var(--border)",
+          borderRadius:7,fontSize:isActive?12:10,
+          color:"var(--text3)",fontStyle:"italic"
+        }},"Sin materias asignadas para este momento"),
+        matsEnFranja.length>0&&e("div",{style:{display:"grid",
+          gridTemplateColumns:isActive?"repeat(auto-fill,minmax(280px,1fr))":"repeat(auto-fill,minmax(200px,1fr))",
+          gap:isActive?12:8}},
+          matsEnFranja.map(m=>{
+            const mins=minsSemana[m.id]||0;
+            const hs=parseFloat((mins/60).toFixed(1));
+            const minH=m.horasMin||0,maxH=m.horasMax||0;
+            const pct=maxH?Math.min(100,Math.round(hs/maxH*100)):0;
+            const sem=!minH&&!maxH?"gray":hs>=maxH?"green":hs>=minH?"yellow":"red";
+            const c={red:"var(--err-text)",yellow:"var(--warn-text)",green:"var(--ok-text)",gray:"var(--text3)"}[sem];
+
+            if(isActive){
+              // Full card
+              return e("div",{key:m.id,style:{background:"var(--bg1)",border:"1px solid var(--border)",
+                borderRadius:9,padding:16,borderLeft:`4px solid ${m.color}`}},
+                e("div",{style:{fontSize:14,fontWeight:600,color:"var(--text0)",marginBottom:2,
+                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.nombre),
+                e("div",{style:{fontSize:10,color:"var(--text3)",marginBottom:10}},
+                  m.codigo+(periodoTag(m)?" · "+periodoTag(m):"")),
+                (minH||maxH)&&e("div",{style:{marginBottom:12}},
+                  e("div",{style:{display:"flex",justifyContent:"space-between",fontSize:10,
+                    color:"var(--text2)",marginBottom:3}},
+                    e("span","Esta semana"),
+                    e("span",{style:{color:c,fontWeight:600}},hs+"h / "+minH+"–"+maxH+"h")
+                  ),
+                  e("div",{style:{height:5,background:"var(--border)",borderRadius:3,overflow:"hidden"}},
+                    e("div",{style:{height:"100%",width:pct+"%",background:c,borderRadius:3,transition:"width .4s"}})
+                  )
+                ),
+                e("button",{onClick:()=>onStartPomo(m),
+                  style:{width:"100%",background:"var(--info-bg)",border:"1px solid var(--accent)",
+                    color:"var(--info-text)",padding:"8px 12px",borderRadius:6,cursor:"pointer",
+                    fontFamily:"inherit",fontSize:12,fontWeight:700}
+                },"▶ Iniciar sesión de estudio")
+              );
+            } else {
+              // Compact card
+              return e("div",{key:m.id,style:{background:"var(--bg1)",border:"1px solid var(--border)",
+                borderRadius:7,padding:"8px 12px",borderLeft:`3px solid ${m.color}88`,
+                display:"flex",alignItems:"center",gap:8}},
+                e("div",{style:{flex:1,minWidth:0}},
+                  e("div",{style:{fontSize:12,fontWeight:500,color:"var(--text1)",
+                    overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.nombre),
+                  (minH||maxH)&&e("div",{style:{height:3,background:"var(--border)",borderRadius:2,
+                    overflow:"hidden",marginTop:4}},
+                    e("div",{style:{height:"100%",width:pct+"%",background:c,borderRadius:2}})
+                  )
+                )
+              );
+            }
+          })
+        )
+        ) // end Fragment
+      );
+    }),
+
+    // ── SLOT CELL EDITOR ──
+    editSlotCell&&e("div",{className:"ov",onClick:()=>setEditSlotCell(null)},
+      e("div",{className:"mod",style:{maxWidth:340},onClick:ev=>ev.stopPropagation()},
+        e("div",{className:"mhd"},
+          e("span",{style:{fontSize:16}},franjasLocal[editSlotCell.fid]?.emoji||""),
+          e("span",{className:"mtit"},
+            DIAS.find(d=>d.id===editSlotCell.dia)?.label+" · "+(franjasLocal[editSlotCell.fid]?.label||"")
+          ),
+          e("button",{className:"mclose",onClick:()=>setEditSlotCell(null)},"✕")
+        ),
+        e("div",{className:"mbody"},
+          // Materias with this slot
+          e("div",{style:{marginBottom:12}},
+            materias.filter(m=>(m.slots||[]).some(s=>s.dia===editSlotCell.dia&&s.momento===editSlotCell.fid))
+              .map(m=>e("div",{key:m.id,style:{display:"flex",alignItems:"center",gap:8,
+                padding:"6px 8px",background:"var(--bg2)",borderRadius:5,marginBottom:6}},
+                e("div",{style:{width:8,height:8,borderRadius:"50%",background:m.color,flexShrink:0}}),
+                e("span",{style:{flex:1,fontSize:12,color:"var(--text0)"}}),
+                e("span",{style:{flex:1,fontSize:12,color:"var(--text0)"}},m.nombre),
+                e("button",{
+                  onClick:()=>{
+                    const newSlots=(m.slots||[]).filter(s=>!(s.dia===editSlotCell.dia&&s.momento===editSlotCell.fid));
+                    onEditMateria&&onEditMateria(m.id,m.horasMin,m.horasMax,newSlots);
+                  },
+                  style:{background:"transparent",border:"none",color:"var(--err-text)",
+                    cursor:"pointer",fontSize:14,padding:"0 2px",lineHeight:1}
+                },"✕")
+              )),
+            materias.filter(m=>(m.slots||[]).some(s=>s.dia===editSlotCell.dia&&s.momento===editSlotCell.fid)).length===0&&
+              e("div",{style:{fontSize:11,color:"var(--text3)",fontStyle:"italic"}},"Sin materias asignadas")
+          ),
+          // Add materia selector
+          e("div",{style:{borderTop:"1px solid var(--border)",paddingTop:10}},
+            e("div",{style:{fontSize:10,color:"var(--text3)",marginBottom:6,letterSpacing:".06em"}},"AGREGAR MATERIA"),
+            e("select",{className:"fi",style:{width:"100%"},
+              value:"",
+              onChange:ev=>{
+                const matId=ev.target.value;
+                if(!matId) return;
+                const m=materias.find(x=>x.id===matId);
+                if(!m) return;
+                const newSlots=[...(m.slots||[]),{dia:editSlotCell.dia,momento:editSlotCell.fid}];
+                onEditMateria&&onEditMateria(m.id,m.horasMin,m.horasMax,newSlots);
+              }},
+              e("option",{value:""},"+ Elegir materia..."),
+              materias
+                .filter(m=>!(m.slots||[]).some(s=>s.dia===editSlotCell.dia&&s.momento===editSlotCell.fid))
+                .map(m=>e("option",{key:m.id,value:m.id},m.nombre))
+            )
+          )
+        )
+      )
+    ),
+
+    // ── RESUMEN SEMANAL ──
+    e("div",{style:{marginTop:16}},
+      e("div",{style:{fontSize:10,color:"var(--text3)",letterSpacing:".1em",fontWeight:600,marginBottom:12}},"RESUMEN DE LA SEMANA"),
+      e("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+        materias.filter(m=>m.horasMin||m.horasMax).map(m=>{
+          const mins=minsSemana[m.id]||0;
+          const hs=parseFloat((mins/60).toFixed(1));
+          const minH=m.horasMin||0,maxH=m.horasMax||0;
+          const pct=maxH?Math.min(100,Math.round(hs/maxH*100)):0;
+          const minPct=maxH&&minH?Math.round(minH/maxH*100):0;
+          const sem=hs>=maxH?"green":hs>=minH?"yellow":"red";
+          const c={red:"var(--err-text)",yellow:"var(--warn-text)",green:"var(--ok-text)"}[sem];
+          return e("div",{key:m.id,style:{display:"flex",alignItems:"center",gap:10,
+            padding:"8px 12px",background:"var(--bg1)",border:"1px solid var(--border)",borderRadius:6}},
+            e("div",{style:{width:8,height:8,borderRadius:"50%",background:m.color,flexShrink:0}}),
+            e("span",{style:{fontSize:12,color:"var(--text0)",minWidth:150,overflow:"hidden",
+              textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.nombre),
+            e("div",{style:{flex:1,position:"relative",height:6,background:"var(--border)",borderRadius:3,overflow:"visible"}},
+              e("div",{style:{position:"absolute",inset:0,overflow:"hidden",borderRadius:3}},
+                e("div",{style:{height:"100%",width:pct+"%",background:c,borderRadius:3,transition:"width .4s"}})
+              ),
+              minH>0&&maxH>0&&e("div",{style:{position:"absolute",top:-2,left:minPct+"%",
+                width:2,height:10,background:"var(--text2)",borderRadius:1,transform:"translateX(-50%)",zIndex:2}})
+            ),
+            e("span",{style:{fontSize:11,color:c,fontWeight:600,minWidth:60,textAlign:"right"}},hs+"h / "+maxH+"h"),
+            e("button",{onClick:()=>onEditObjetivos&&onEditObjetivos(m),
+              style:{background:"transparent",border:"1px solid var(--border)",color:"var(--text3)",
+                padding:"3px 8px",height:24,borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontSize:10,
+                flexShrink:0,display:"flex",alignItems:"center",gap:4,transition:"all .12s"}
+            },"✎ Objetivos")
+          );
+        })
+      )
+    )
+  );
+}
+
+
+function FranjasEditor({franjas,onSave,onClose,inline=false}){
+  const f=franjas||DEFAULT_FRANJAS;
+  const [h0,setH0]=useState(()=>String(f.manana?.inicio??6).padStart(2,'0')+":00");
+  const [h1,setH1]=useState(()=>String(f.tarde?.inicio??13).padStart(2,'0')+":00");
+  const [h2,setH2]=useState(()=>String(f.noche?.inicio??19).padStart(2,'0')+":00");
+  const [h3,setH3]=useState(()=>f.noche?.fin===24?"00:00":String(f.noche?.fin??24).padStart(2,'0')+":00");
+  const [err,setErr]=useState("");
+
+  function toH(t){return parseInt(t.split(":")[0]);}
+
+  // Live preview values
+  const i0=toH(h0),i1=toH(h1),i2=toH(h2);
+  const i3=h3==="00:00"?24:toH(h3);
+
+  function fmtT(h){return h===24?"00:00":String(h).padStart(2,'0')+":00";}
+  function fmtRango(a,b){return`${fmtT(a)} – ${fmtT(b)}`;}
+
+  const valid=i0>=0&&i0<i1&&i1<i2&&i2<=(i3===0?24:i3)&&(i3===24||i3>i2);
+  const errMsg=!valid?(
+    i0>=i1?"El inicio de Mañana debe ser antes del inicio de Tarde":
+    i1>=i2?"El inicio de Tarde debe ser antes del inicio de Noche":
+    "El fin de Noche debe ser posterior al inicio de Noche"
+  ):"";
+
+  function go(){
+    if(!valid){setErr(errMsg);return;}
+    const newFranjas={
+      manana:{label:"Mañana",inicio:i0,fin:i1,emoji:"🌅"},
+      tarde: {label:"Tarde", inicio:i1,fin:i2,emoji:"☀️"},
+      noche: {label:"Noche", inicio:i2,fin:i3,emoji:"🌙"},
+    };
+    onSave(newFranjas);
+    onClose&&onClose();
+  }
+
+  const rows=[
+    {emoji:"🌅",label:"Mañana",  desde:{v:h0,set:setH0},hasta:{v:h1,set:setH1,label:"inicio de Tarde"}},
+    {emoji:"☀️",label:"Tarde",   desde:{v:h1,set:setH1},hasta:{v:h2,set:setH2,label:"inicio de Noche"}},
+    {emoji:"🌙",label:"Noche",   desde:{v:h2,set:setH2},hasta:{v:h3,set:setH3,label:"fin de Noche"}},
+  ];
+
+  const preview=[
+    {emoji:"🌅",label:"Mañana",rango:fmtRango(i0,i1)},
+    {emoji:"☀️",label:"Tarde",  rango:fmtRango(i1,i2)},
+    {emoji:"🌙",label:"Noche",  rango:fmtRango(i2,i3)},
+  ];
+
+  const inner = e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+    (err||errMsg)&&e("div",{className:"ferr",style:{padding:"5px 9px",fontSize:11}},err||errMsg),
+    e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+      rows.map(r=>e("div",{key:r.label,style:{display:"flex",alignItems:"center",gap:8}},
+        e("span",{style:{fontSize:15,width:24,textAlign:"center",flexShrink:0}},r.emoji),
+        e("span",{style:{fontSize:11,color:"var(--text0)",fontWeight:500,width:56,flexShrink:0}},r.label),
+        e("div",{style:{display:"flex",alignItems:"center",gap:6}},
+          e("input",{className:"fi",type:"time",value:r.desde.v,style:{width:88,padding:"4px 8px"},
+            onChange:ev=>r.desde.set(ev.target.value)}),
+          e("span",{style:{fontSize:10,color:"var(--text3)"}},"–"),
+          e("input",{className:"fi",type:"time",value:r.hasta.v,style:{width:88,padding:"4px 8px"},
+            onChange:ev=>r.hasta.set(ev.target.value)})
+        )
+      ))
+    ),
+    e("div",{style:{padding:"8px 10px",background:"var(--bg2)",borderRadius:5,fontSize:10,
+      color:valid?"var(--text2)":"var(--err-text)"}},
+      preview.map(p=>e("div",{key:p.label},p.emoji+" "+p.label+":  "+p.rango))
+    ),
+    e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
+      onClose&&e("button",{className:"cancbtn",onClick:onClose},"Cancelar"),
+      e("button",{className:"savebtn",style:{opacity:valid?1:.5},onClick:go},"✓ Guardar")
+    )
+  );
+
+  if(inline) return inner;
+
+  return e("div",{className:"ov",onClick:onClose},
+    e("div",{className:"mod",style:{maxWidth:380},onClick:ev=>ev.stopPropagation()},
+      e("div",{className:"mhd"},
+        e("span",{style:{fontSize:18}},"🕐"),
+        e("span",{className:"mtit"},"Franjas del día"),
+        e("button",{className:"mclose",onClick:onClose},"✕")
+      ),
+      e("div",{className:"mbody"},inner)
+    )
+  );
+}
+
+/* ─── HELP GUIDE ── */
+const GUIDE_SECTIONS=[
+  {id:"inicio",label:"🚀 Primeros pasos",content:[
+    {title:"1. Creá tus materias",text:"Abrí ⚙ Config → Materias y agregá cada materia con su nombre, código, color y período (C1, C2 o Anual)."},
+    {title:"2. Configurá objetivos",text:"En ⚙ Config → Materias, editá cada materia para definir cuántas horas mínimas y máximas querés dedicarle por semana."},
+    {title:"3. Asigná slots de estudio",text:"Dentro de los objetivos, usá la grilla de horario para marcar en qué días y momentos (Mañana/Tarde/Noche) estudias cada materia."},
+    {title:"4. Creá tus tareas",text:"En Backlog o Kanban, creá las tareas de cada materia: entregas, parciales, lecturas. Podés agregar checklists y marcarlas como obligatorias."},
+    {title:"5. Empezá a estudiar",text:"Abrí la vista ◈ Hoy. Vas a ver qué materias te tocan en este momento del día. Hacé click en ▶ Iniciar sesión para empezar."},
+  ]},
+  {id:"hoy",label:"◈ Vista Hoy",content:[
+    {title:"¿Qué muestra?",text:"La vista Hoy te muestra qué materias tenés asignadas para cada momento del día (Mañana, Tarde, Noche) según los slots que configuraste."},
+    {title:"Secciones del día",text:"La franja horaria actual aparece grande y activa. Las otras franjas aparecen más pequeñas y apagadas. Solo se muestran materias con slots asignados para hoy."},
+    {title:"Ver semana",text:"El botón 📅 Ver semana abre una grilla 7×3 con toda tu semana. Podés hacer click en el ✎ de cualquier celda para agregar o quitar materias de ese slot."},
+    {title:"Resumen semanal",text:"Al final de la vista ves el progreso de horas de todas tus materias durante la semana, con el marcador de mínimo. El botón ✎ Objetivos te lleva a configurar los objetivos de esa materia."},
+    {title:"Franjas del día",text:"Podés cambiar los horarios de Mañana, Tarde y Noche con el ✎ al lado de la franja actual, o desde ⚙ Config → Horarios."},
+  ]},
+  {id:"materias",label:"◉ Materias",content:[
+    {title:"Lista de materias",text:"Cada fila muestra el progreso de horas de la semana actual. La barra de color indica si estás por debajo del mínimo (rojo), en zona segura (amarillo) o sobre el máximo (verde)."},
+    {title:"Expandir una materia",text:"Hacé click en cualquier fila para expandirla y ver el detalle: sesiones del período, métricas de horas, tareas pendientes y el historial de sesiones."},
+    {title:"Períodos de análisis",text:"Dentro de cada materia podés ver las sesiones de esta semana, las últimas 2 semanas, 4 semanas, o un rango personalizado."},
+    {title:"Editar objetivos",text:"El botón ✎ Objetivos abre un popup donde configurás las horas mín/máx por semana y la grilla de slots de horario."},
+    {title:"Cargar horas manuales",text:"Con + Cargar horas podés registrar tiempo de estudio que hiciste fuera de la app (leyendo en papel, en clase, etc.)."},
+  ]},
+  {id:"sesiones",label:"⏱ Sesiones y Pomodoro",content:[
+    {title:"Iniciar una sesión",text:"Desde la vista Hoy o desde una materia expandida, hacé click en ▶ Iniciar sesión. Podés asociarla a una tarea específica o dejarla sin tarea."},
+    {title:"El timer",text:"La pantalla de sesión muestra un cronómetro que solo cuenta el tiempo de estudio activo. Si pausás, el reloj de pausa corre por separado pero no se guarda."},
+    {title:"Objetivo del slot",text:"Debajo del timer ves dos reglas: Simple (objetivo fijo por slot) y Ponderado (se adapta a lo ya estudiado esta semana). La barra de progreso avanza entre ambas escalas."},
+    {title:"Simple vs Ponderado",text:"Simple divide el objetivo semanal en partes iguales. Ponderado calcula cuánto te falta para el mínimo semanal y lo divide entre los slots que quedan. Si ya cumpliste el mínimo semanal, el Ponderado lo indica."},
+    {title:"Guardar o cancelar",text:"Al terminar, ▣ Terminar y guardar registra la sesión. ✕ Cancelar sin guardar la descarta completamente."},
+  ]},
+  {id:"tareas",label:"≡ Tareas y Backlog",content:[
+    {title:"Backlog",text:"Lista de todas las tareas ordenadas por urgencia. Podés filtrar por materia y tipo. El toggle ○◑● cambia el estado directamente desde la lista."},
+    {title:"Kanban",text:"Vista de columnas: Pendiente / En progreso / Completado. Ideal para ver el flujo de trabajo de un vistazo."},
+    {title:"Calendario",text:"Muestra las tareas en el mes según su fecha límite. Los chips muestran el título y la materia. Hacé click para abrir el detalle."},
+    {title:"Checklist",text:"Cada tarea puede tener un checklist de ítems. El progreso se muestra como barra en el backlog y el kanban."},
+    {title:"Obligatorio vs opcional",text:"El indicador 🔴 marca las tareas obligatorias. Usalo para distinguir entregas que no podés saltear de lecturas opcionales."},
+  ]},
+  {id:"datos",label:"☁ Datos y sincronización",content:[
+    {title:"Google Drive",text:"Conectá tu cuenta desde 💾 Datos → Conectar Google Drive. La app guarda automáticamente cada 4 segundos después del último cambio."},
+    {title:"Datos locales",text:"Sin cuenta conectada, los datos se guardan en el navegador de este dispositivo. No se sincronizan entre dispositivos."},
+    {title:"Importar / Exportar",text:"Podés descargar un archivo JSON con todos tus datos como respaldo, o importar uno. Útil para mover datos entre dispositivos sin Drive."},
+    {title:"Resetear datos",text:"Desde 💾 Datos → Resetear datos podés empezar de cero (datos vacíos) o cargar los datos de ejemplo para explorar la app."},
+    {title:"Versión de datos",text:"La app usa un sistema de versiones para el formato de datos. Si una versión futura cambia el formato, los datos viejos se migran o se advierte al usuario."},
+  ]},
+];
+
+function HelpGuide({onClose}){
+  const [tab,setTab]=useState("inicio");
+  const sec=GUIDE_SECTIONS.find(s=>s.id===tab)||GUIDE_SECTIONS[0];
+
+  return e("div",{className:"ov",onClick:onClose},
+    e("div",{
+      className:"mod",
+      style:{maxWidth:720,height:"80vh",display:"flex",flexDirection:"column",padding:0},
+      onClick:ev=>ev.stopPropagation()
+    },
+      // Header
+      e("div",{style:{
+        display:"flex",alignItems:"center",justifyContent:"space-between",
+        padding:"18px 24px",borderBottom:"1px solid var(--border)",flexShrink:0
+      }},
+        e("div",{style:{display:"flex",alignItems:"center",gap:10}},
+          e("span",{style:{fontSize:22}},"?"),
+          e("span",{style:{fontSize:16,fontWeight:700,color:"var(--text0)"}},
+            "Guía de uso — UAI Planner"
+          )
+        ),
+        e("button",{className:"mclose",onClick:onClose},"✕")
+      ),
+      // Body: sidebar + content
+      e("div",{style:{display:"flex",flex:1,overflow:"hidden"}},
+        // Sidebar
+        e("div",{style:{
+          width:200,flexShrink:0,borderRight:"1px solid var(--border)",
+          overflowY:"auto",padding:"8px 0"
+        }},
+          GUIDE_SECTIONS.map(s=>e("button",{
+            key:s.id,
+            onClick:()=>setTab(s.id),
+            style:{
+              display:"block",width:"100%",textAlign:"left",
+              padding:"9px 16px",background:tab===s.id?"var(--info-bg)":"transparent",
+              border:"none",borderLeft:tab===s.id?"3px solid var(--accent)":"3px solid transparent",
+              color:tab===s.id?"var(--info-text)":"var(--text1)",
+              cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:tab===s.id?600:400,
+              transition:"all .12s"
+            }
+          },s.label))
+        ),
+        // Content
+        e("div",{style:{flex:1,overflowY:"auto",padding:"24px 28px"}},
+          e("div",{style:{fontSize:14,fontWeight:700,color:"var(--text0)",marginBottom:20}},
+            sec.label
+          ),
+          sec.content.map((item,i)=>e("div",{key:i,style:{marginBottom:20}},
+            e("div",{style:{
+              fontSize:12,fontWeight:600,color:"var(--text0)",
+              marginBottom:5,display:"flex",alignItems:"center",gap:6
+            }},
+              e("span",{style:{
+                width:20,height:20,borderRadius:"50%",background:"var(--info-bg)",
+                color:"var(--info-text)",fontSize:10,fontWeight:700,
+                display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0
+              }},i+1),
+              item.title
+            ),
+            e("div",{style:{
+              fontSize:12,color:"var(--text1)",lineHeight:1.7,
+              paddingLeft:26,
+            }},item.text)
+          )),
+          // Footer tip
+          e("div",{style:{
+            marginTop:16,padding:"10px 14px",background:"var(--bg2)",
+            borderRadius:6,fontSize:11,color:"var(--text3)",fontStyle:"italic"
+          }},
+            "💡 Podés volver a esta guía en cualquier momento con el botón ? del header."
+          )
+        )
+      ),
+      // Footer
+      e("div",{style:{
+        padding:"14px 24px",borderTop:"1px solid var(--border)",
+        display:"flex",justifyContent:"flex-end",flexShrink:0
+      }},
+        e("button",{className:"savebtn",onClick:onClose},"Entendido →")
       )
     )
   );
