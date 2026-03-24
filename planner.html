@@ -168,6 +168,19 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)!
 .cchip{display:flex;flex-direction:column;gap:1px;padding:3px 5px;background:var(--bg2);border-radius:3px;font-size:9px;color:var(--text1);cursor:pointer;overflow:hidden;margin-bottom:2px;border-left:2px solid transparent;transition:background .1s}
 .cchip:hover{background:var(--bg3)}
 .cmore{font-size:9px;color:var(--text3);padding-left:5px}
+.cevt{display:flex;flex-direction:column;gap:1px;padding:3px 5px;border-radius:3px;font-size:9px;color:var(--text1);cursor:pointer;overflow:hidden;margin-bottom:2px;border-left:2px solid transparent;transition:background .1s,transform .1s}
+.cevt:hover{background:var(--bg3);transform:translateY(-1px)}
+.cevt-main{display:flex;align-items:center;gap:4px;min-width:0}
+.cevt-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;font-weight:500;color:var(--text0)}
+.cevt-kind{font-size:9px;color:var(--text3);flex-shrink:0}
+.cevt-link{font-size:8px;color:var(--accent);text-decoration:underline;cursor:pointer;flex-shrink:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cevt-link:hover{filter:brightness(1.08)}
+.cevt-meta{font-size:8px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cevt-start{background:var(--bg2)}
+.cevt-end{background:var(--bg2)}
+.cevt-end-urgent{background:var(--err-bg)}
+.cevt-end-yellow{background:var(--warn-bg)}
+.cevt-end-green{background:var(--ok-bg)}
 
 /* ── MODALS ── */
 .ov{position:fixed;inset:0;background:var(--overlay);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
@@ -355,6 +368,10 @@ pre.hintcode{margin-top:10px;background:var(--bg1);border:1px solid var(--border
 .periodo-pop-opt{display:flex;align-items:center;width:100%;background:transparent;border:none;color:var(--text1);padding:6px 8px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px;transition:all .12s;text-align:left}
 .periodo-pop-opt:hover{background:var(--bg2);color:var(--text0)}
 .periodo-pop-opt-on{background:var(--bg2);color:var(--text0);font-weight:500}
+.calf-sel{display:flex;align-items:center;position:relative;margin-left:auto}
+.calf-trigger{min-width:180px;justify-content:space-between;display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 10px}
+.calf-trigger .calf-label{flex:1;text-align:left}
+.calf-popover{position:absolute;top:calc(100% + 8px);right:0;width:220px;background:var(--bg1);border:1px solid var(--border2);border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:500;padding:8px}
 </style>
 </head>
 <body>
@@ -1360,6 +1377,48 @@ function PeriodoSelector({anios,fAnio,fPeriodos,setFAnio,togglePeriodo}){
   );
 }
 
+function CalendarFilterSelector({showInicio,showFin,setShowInicio,setShowFin}){
+  const [open,setOpen]=useState(false);
+  const ref=useRef(null);
+  useClickOutside(ref,()=>setOpen(false));
+
+  const selected=[
+    showInicio&&"Inicio",
+    showFin&&"Fin"
+  ].filter(Boolean);
+  const label=selected.length===2?"Inicio y fin":selected.length===1?selected[0]:"Sin eventos";
+
+  return e("div",{className:"calf-sel",ref},
+    e("button",{
+      className:"iconbtn periodo-trigger calf-trigger",
+      onClick:()=>setOpen(!open),
+      title:"Filtrar eventos del calendario"
+    },
+      "◫ ",
+      e("span",{className:"calf-label",style:{color:"var(--text0)",fontWeight:500}},label),
+      e("span",{style:{color:"var(--text3)",fontSize:10}},selected.length===2?"2":"")
+    ),
+    open&&e("div",{className:"calf-popover"},
+      e("div",{className:"tsw-pop-title"},"EVENTOS"),
+      e("button",{
+        className:"periodo-pop-opt "+(showInicio?"periodo-pop-opt-on":""),
+        onClick:()=>setShowInicio(!showInicio)
+      },
+        "Fecha inicio",
+        showInicio&&e("span",{style:{marginLeft:"auto",color:"var(--ok-text)"}},"✓")
+      ),
+      e("button",{
+        className:"periodo-pop-opt "+(showFin?"periodo-pop-opt-on":""),
+        onClick:()=>setShowFin(!showFin)
+      },
+        "Fecha fin",
+        showFin&&e("span",{style:{marginLeft:"auto",color:"var(--ok-text)"}},"✓")
+      ),
+      e("div",{style:{fontSize:10,color:"var(--text3)",padding:"6px 6px 0",textAlign:"center"}},"Ambas activadas muestran todo")
+    )
+  );
+}
+
 /* ══════════════════════════════════════════════════════════════════════
    7. VISTAS DE TAREAS
    ══════════════════════════════════════════════════════════════════════ */
@@ -1572,7 +1631,8 @@ function Kanban({tareas,mmap,tmap,isDark,move,onSel}){
   }));
 }
 /* ─── CALENDAR DAY POPUP ── */
-function CalDayPopup({count,tasks,mmap,tmap,isDark,onSel}){
+
+function CalDayPopup({count,events,renderEvent}){
   const [open,setOpen]=useState(false);
   const ref=useRef(null);
   useClickOutside(ref,()=>setOpen(false));
@@ -1586,169 +1646,205 @@ function CalDayPopup({count,tasks,mmap,tmap,isDark,onSel}){
       style:{
         position:"absolute",top:"100%",left:0,zIndex:100,
         background:"var(--bg1)",border:"1px solid var(--border2)",
-        borderRadius:8,padding:6,minWidth:200,maxWidth:260,
-        boxShadow:"0 8px 24px rgba(0,0,0,.25)",
+        borderRadius:8,padding:6,minWidth:220,maxWidth:300,
+        boxShadow:"0 8px 24px rgba(0,0,0,.25)"
       },
       onClick:ev=>ev.stopPropagation()
     },
-      tasks.map(t=>{
-        const mat=mmap[t.materiaId],tp=tmap[t.tipo];
-        return e("div",{
-          key:t.id,
-          className:"cchip",
-          style:{
-            borderLeftColor:mat?.color||"var(--border2)",
-            background:mat?(mat.color+"28"):"var(--bg2)",
-            opacity:t.estado==="completado"?.4:1,
-            marginBottom:4,cursor:"pointer"
-          },
-          onClick:()=>{onSel(t.id);setOpen(false);}
-        },
-          e("div",{style:{display:"flex",alignItems:"center",gap:3,overflow:"hidden"}},
-            e("span",{style:{fontSize:10,flexShrink:0}},tp?.icon||"•"),
-            t.hora&&e("span",{style:{fontSize:9,color:"var(--text2)",flexShrink:0,fontWeight:600}},t.hora),
-            e("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
-              flex:1,fontWeight:500,color:"var(--text0)"}},t.titulo)
-          ),
-          mat&&e("span",{style:{fontSize:8,color:mat.color,overflow:"hidden",
-            textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:500}},mat.nombre)
-        );
-      })
+      events.map(ev=>renderEvent(ev,true))
     )
   );
 }
 
 /* ─── CALENDAR ── */
-function Cal({tareas,mmap,tmap,isDark,month,setMonth,onSel,onMoveTask}){
+function Cal({tareas,mmap,tmap,isDark,month,setMonth,onSel,onMoveTask,showInicio,showFin,setShowInicio,setShowFin}){
   const y=month.getFullYear(),m=month.getMonth();
   const today=new Date();today.setHours(0,0,0,0);
+  const alertas=getAlertas();
 
-  // First day of month (0=Sun), days in month, days in prev month
-  const firstDow=new Date(y,m,1).getDay(); // 0=Sun
+  const firstDow=new Date(y,m,1).getDay();
   const dim=new Date(y,m+1,0).getDate();
   const dimPrev=new Date(y,m,0).getDate();
 
-  // Build grid: pad start with prev month days, pad end to complete last week
   const cells=[];
-  for(let i=firstDow-1;i>=0;i--)
-    cells.push({day:dimPrev-i,month:m-1,year:m===0?y-1:y,outside:true});
-  for(let d=1;d<=dim;d++)
-    cells.push({day:d,month:m,year:y,outside:false});
-  // Complete last week + add one full extra week ahead
+  for(let i=firstDow-1;i>=0;i--) cells.push({day:dimPrev-i,month:m-1,year:m===0?y-1:y,outside:true});
+  for(let d=1;d<=dim;d++) cells.push({day:d,month:m,year:y,outside:false});
   const remaining=(7-cells.length%7)%7;
-  const extraDays=remaining+7; // fill last week + one more
-  for(let d=1;d<=extraDays;d++)
-    cells.push({day:d,month:m+1,year:m===11?y+1:y,outside:true});
-
-  // Index tasks by date string
-  const byDate=useMemo(()=>{
-    const mp={};
-    tareas.forEach(t=>{
-      if(!t.fechaLimite&&!t.fechaInicio) return;
-      const k=t.fechaLimite;
-      if(!mp[k]) mp[k]=[];
-      mp[k].push(t);
-    });
-    // Sort each day: tasks with hora first (by time), then without hora
-    Object.keys(mp).forEach(k=>{
-      mp[k].sort((a,b)=>{
-        if(a.hora&&b.hora) return a.hora.localeCompare(b.hora);
-        if(a.hora) return -1;
-        if(b.hora) return 1;
-        return 0;
-      });
-    });
-    return mp;
-  },[tareas]);
+  const extraDays=remaining+7;
+  for(let d=1;d<=extraDays;d++) cells.push({day:d,month:m+1,year:m===11?y+1:y,outside:true});
 
   function dateKey(cy,cm,cd){
     return `${cy}-${String(cm+1).padStart(2,'0')}-${String(cd).padStart(2,'0')}`;
   }
+  function parseDateKey(k){
+    if(!k) return null;
+    const parts=String(k).split("-").map(n=>parseInt(n,10));
+    if(parts.length!==3||parts.some(n=>Number.isNaN(n))) return null;
+    const [yy,mm,dd]=parts;
+    return new Date(yy,mm-1,dd);
+  }
+  function jumpToDate(k){
+    const d=parseDateKey(k);
+    if(!d) return;
+    setMonth(new Date(d.getFullYear(),d.getMonth(),1));
+  }
+  function shortDate(k){
+    return fd(k);
+  }
 
   const [dragTaskId,setDragTaskId]=useState(null);
-  const [overCell,setOverCell]=useState(null); // dateKey string
+  const [dragField,setDragField]=useState(null);
+  const [overCell,setOverCell]=useState(null);
+
+  const eventsByDate=useMemo(()=>{
+    const mp={};
+    tareas.forEach(t=>{
+      const push=(kind,fecha)=>{
+        if(!fecha) return;
+        if(kind==="inicio" && !showInicio) return;
+        if(kind==="fin" && !showFin) return;
+        const k=fecha.slice(0,10);
+        if(!mp[k]) mp[k]=[];
+        mp[k].push({
+          id:`${t.id}:${kind}`,
+          kind,
+          fecha:k,
+          task:t,
+          relatedDate:kind==="inicio" ? t.fechaLimite : t.fechaInicio,
+        });
+      };
+      push("inicio",t.fechaInicio);
+      push("fin",t.fechaLimite);
+    });
+    Object.keys(mp).forEach(k=>{
+      mp[k].sort((a,b)=>{
+        if(a.kind!==b.kind) return a.kind==="fin" ? -1 : 1;
+        const ah=a.task.hora||"99:99";
+        const bh=b.task.hora||"99:99";
+        if(ah!==bh) return ah.localeCompare(bh);
+        const at=a.task.titulo||"";
+        const bt=b.task.titulo||"";
+        return at.localeCompare(bt);
+      });
+    });
+    return mp;
+  },[tareas,showInicio,showFin]);
+
+
+  function renderEvent(ev,compact=false){
+    const t=ev.task;
+    const mat=mmap[t.materiaId];
+    const tp=tmap[t.tipo]||{icon:"•"};
+    const alert=ev.kind==="fin" ? getAlertColor(t,alertas) : null;
+    const bg=ev.kind==="fin"
+      ? (alert ? ALERT_COLORS[alert].bg : (mat ? mat.color+"22" : "var(--bg2)"))
+      : (mat ? mat.color+"22" : "var(--bg2)");
+    const border=ev.kind==="fin"
+      ? (alert ? ALERT_COLORS[alert].border : (mat?.color || "var(--border2)"))
+      : (mat?.color || "var(--border2)");
+    const related=ev.relatedDate;
+    const relatedLabel=related ? shortDate(related) : "";
+    const isDragging=dragTaskId===ev.id;
+
+    return e("div",{
+      key:ev.id,
+      className:`cevt ${ev.kind==='fin' ? (alert ? 'cevt-end cevt-end-'+alert : 'cevt-end') : 'cevt-start'}`,
+      draggable:true,
+      onDragStart:dragEv=>{
+        dragEv.stopPropagation();
+        setDragTaskId(ev.id);
+        setDragField(ev.kind==='inicio' ? 'fechaInicio' : 'fechaLimite');
+        dragEv.dataTransfer.effectAllowed='move';
+        dragEv.dataTransfer.setData('taskId',t.id);
+        dragEv.dataTransfer.setData('dragField',ev.kind==='inicio' ? 'fechaInicio' : 'fechaLimite');
+      },
+      onDragEnd:()=>{setDragTaskId(null);setDragField(null);setOverCell(null);},
+      onClick:()=>onSel(t.id),
+      style:{
+        borderLeftColor:border,
+        background:bg,
+        opacity:isDragging?0.3:(t.estado==='completado'?0.42:1),
+        cursor:'grab',
+        marginBottom:compact?4:2,
+        padding:compact?'4px 6px':'3px 5px',
+        fontSize:9
+      }
+    },
+      e("div",{className:"cevt-main"},
+        e("span",{className:"cevt-kind"},tp.icon),
+        ev.kind==="inicio"
+          ? e("span",{className:"cevt-title"},`${t.titulo} →`)
+          : e("span",{className:"cevt-title"},`← ${t.titulo}`),
+        related&&e("span",{
+          className:"cevt-link",
+          title:ev.kind==="inicio"?"Ir al fin":"Ir al inicio",
+          onClick:x=>{x.stopPropagation();jumpToDate(related);}
+        },`(${relatedLabel})`)
+      ),
+      e("div",{className:"cevt-meta"},
+        `${mat?mat.nombre:"Sin materia"}${t.hora?" · "+t.hora:""}`
+      )
+    );
+  }
+
 
   return e("div",{className:"cal"},
-    e("div",{className:"calnav"},
+    e("div",{className:"calnav",style:{gap:10,justifyContent:"flex-start"}},
       e("button",{className:"calnb",onClick:()=>setMonth(new Date(y,m-1,1))},"‹"),
-      e("span",{className:"calt"},MONTHS[m]+" "+y),
-      e("button",{className:"calnb",onClick:()=>setMonth(new Date(y,m+1,1))},"›")
+      e("span",{className:"calt",style:{flex:1,textAlign:"center"}},`${MONTHS[m]} ${y}`),
+      e("button",{className:"calnb",onClick:()=>setMonth(new Date(y,m+1,1))},"›"),
+      e(CalendarFilterSelector,{showInicio,showFin,setShowInicio,setShowFin})
+    ),
+    e("div",{style:{padding:"0 14px 10px",fontSize:10,color:"var(--text3)",borderBottom:"1px solid var(--border)",display:"flex",gap:10,flexWrap:"wrap"}},
+      e("span",null,"Eventos: "),
+      e("span",null,"→ inicio"),
+      e("span",null,"← fin"),
+      e("span",null,"Click en la fecha enlazada para saltar al otro evento")
     ),
     e("div",{className:"calgrid"},
-      DAYS.map(d=>e("div",{key:d,className:"cdn"},d)),
+      DAYS.map(d=>e("div",{key:`h-${d}`,className:"cdn"},d)),
       cells.map((cell,i)=>{
         const {day,month:cm,year:cy,outside}=cell;
         const key=dateKey(cy,cm,day);
-        const ct=byDate[key]||[];
+        const events=eventsByDate[key]||[];
         const isToday=new Date(cy,cm,day).getTime()===today.getTime();
-        const cellKey=dateKey(cy,cm,day);
-        const isOver=overCell===cellKey&&dragTaskId;
         const cellDate=new Date(cy,cm,day);
-        const diffDays=Math.round((cellDate-today)/(1000*60*60*24));
-        const a=getAlertas();
-        const isUrgent=!outside&&(byDate[cellKey]||[]).some(t=>getAlertColor(t,a)!==null);
-        const worstAlert=(byDate[cellKey]||[]).reduce((worst,t)=>{
-          const c=getAlertColor(t,a);
+        const isOver=overCell===key&&dragTaskId;
+        const dayAlert=events.reduce((worst,ev)=>{
+          if(ev.kind!=="fin") return worst;
+          const c=getAlertColor(ev.task,alertas);
           if(c==="red") return "red";
           if(c==="yellow"&&worst!=="red") return "yellow";
           if(c==="green"&&!worst) return "green";
           return worst;
         },null);
-        return e("div",{key:i,
+        return e("div",{
+          key:i,
           className:"cc "+(isToday?"cc-today":""),
           style:{
             opacity:outside?0.45:1,
-            background:isOver?"var(--info-bg)":worstAlert?ALERT_COLORS[worstAlert].bg:undefined,
-            borderTop:worstAlert?`2px solid ${ALERT_COLORS[worstAlert].border}`:undefined,
+            background:isOver?"var(--info-bg)":dayAlert?ALERT_COLORS[dayAlert].bg:undefined,
+            borderTop:dayAlert?`2px solid ${ALERT_COLORS[dayAlert].border}`:undefined,
             outline:isOver?"2px solid var(--accent)":undefined,
             borderRadius:isOver?6:undefined,
             transition:"background .15s"
           },
-          onDragOver:ev=>{ev.preventDefault();setOverCell(cellKey);},
+          onDragOver:ev=>{ev.preventDefault();setOverCell(key);},
           onDragLeave:()=>setOverCell(null),
           onDrop:ev=>{
             ev.preventDefault();
-            const tid=ev.dataTransfer.getData("taskId");
-            if(tid&&onMoveTask) onMoveTask(tid,cellKey);
-            setDragTaskId(null);setOverCell(null);
+            const tid=ev.dataTransfer.getData('taskId');
+            const field=ev.dataTransfer.getData('dragField')||'fechaLimite';
+            if(tid&&onMoveTask) onMoveTask(tid,key,field);
+            setDragTaskId(null);setDragField(null);setOverCell(null);
           }
         },
           e("span",{
             className:"ccn "+(isToday?"ccn-today":""),
             style:{color:outside?"var(--text3)":undefined}
           },day),
-          ct.slice(0,3).map(t=>{
-            const mat=mmap[t.materiaId],tp=tmap[t.tipo];
-            const pct=calcProgress(t);
-            const color=pct!==null?progressColor(pct,isDark):null;
-            return e("div",{key:t.id,className:"cchip",
-              draggable:true,
-              onDragStart:ev=>{
-                ev.stopPropagation();
-                setDragTaskId(t.id);
-                ev.dataTransfer.effectAllowed="move";
-                ev.dataTransfer.setData("taskId",t.id);
-              },
-              onDragEnd:()=>{setDragTaskId(null);setOverCell(null);},
-              style:{
-                borderLeftColor:mat?.color||"var(--border2)",
-                background:mat?(mat.color+"28"):"var(--bg2)",
-                opacity:dragTaskId===t.id?0.3:t.estado==="completado"?0.4:1,
-                cursor:"grab",transition:"opacity .15s"
-              },
-              onClick:()=>!dragTaskId&&onSel(t.id)},
-              e("div",{style:{display:"flex",alignItems:"center",gap:3,overflow:"hidden"}},
-                e("span",{style:{fontSize:10,flexShrink:0}},tp?.icon||"•"),
-                t.hora&&e("span",{style:{fontSize:9,color:"var(--text2)",flexShrink:0,fontWeight:600}},t.hora),
-                e("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,
-                  fontWeight:500,color:"var(--text0)"}},t.titulo)
-              ),
-              mat&&e("span",{style:{fontSize:8,color:mat.color,overflow:"hidden",
-                textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:500}},mat.nombre),
-              pct!==null&&e("span",{style:{fontSize:9,color,flexShrink:0,marginLeft:2}},pct+"%")
-            );
-          }),
-          ct.length>3&&e(CalDayPopup,{count:ct.length-3,tasks:ct.slice(3),mmap,tmap,isDark,onSel})
+          events.slice(0,3).map(ev=>renderEvent(ev,false)),
+          events.length>3&&e(CalDayPopup,{count:events.length-3,events:events.slice(3),renderEvent})
         );
       })
     )
@@ -1904,13 +2000,15 @@ function FormModal({task,materias,tipos,isDark,onSave,onClose}){
               },"?")
             ),
             e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,alignItems:"end"}},
-              e("div",null,
+              e("div",{style:{position:"relative"}},
                 e("div",{style:{fontSize:9,color:"var(--text3)",marginBottom:3,letterSpacing:".05em"}},"INICIO (OPCIONAL)"),
-                e("input",{className:"fi",type:"date",value:f.fechaInicio||"",onChange:ev=>s("fechaInicio",ev.target.value),style:{width:"100%"}})
+                e("input",{className:"fi",type:"date",value:f.fechaInicio||"",onChange:ev=>s("fechaInicio",ev.target.value),style:{width:"100%",paddingRight:22}}),
+                f.fechaInicio&&e("button",{type:"button",title:"Borrar fecha de inicio",onClick:()=>s("fechaInicio",null),style:{position:"absolute",right:4,top:20,border:"none",background:"transparent",color:"var(--text3)",cursor:"pointer",fontSize:16,lineHeight:1,padding:0,width:18,height:18}},"×")
               ),
-              e("div",null,
+              e("div",{style:{position:"relative"}},
                 e("div",{style:{fontSize:9,color:"var(--text3)",marginBottom:3,letterSpacing:".05em"}},"LÍMITE (OPCIONAL)"),
-                e("input",{className:"fi",type:"date",value:f.fechaLimite||"",onChange:ev=>s("fechaLimite",ev.target.value),style:{width:"100%"}})
+                e("input",{className:"fi",type:"date",value:f.fechaLimite||"",onChange:ev=>s("fechaLimite",ev.target.value),style:{width:"100%",paddingRight:22}}),
+                f.fechaLimite&&e("button",{type:"button",title:"Borrar fecha límite",onClick:()=>s("fechaLimite",null),style:{position:"absolute",right:4,top:20,border:"none",background:"transparent",color:"var(--text3)",cursor:"pointer",fontSize:16,lineHeight:1,padding:0,width:18,height:18}},"×")
               ),
               e("div",{className:"fg",style:{margin:0}},
                 e("label",{className:"fl"},"HORA (OPCIONAL)"),
@@ -2850,191 +2948,16 @@ function HorasEditor({m,onSave,onCancel}){
    11. VISTA HOY
    ══════════════════════════════════════════════════════════════════════ */
 /* ─── HOY VIEW ── */
-function HoyView({materias,sesiones,tareas,isDark,onStartPomo,mmap,tmap,onEditObjetivos,franjas,onSaveFranjas,onEditMateria,urgentTasks,onMoveSlot}){
-  const [now,setNow]=useState(new Date());
-  const [editFranjas,setEditFranjas]=useState(false);
+function WeekView({materias,onEditMateria,onMoveSlot,franjas}){
   const [editSlotCell,setEditSlotCell]=useState(null); // {dia,fid}
   const [gridLayout,setGridLayout]=useState(()=>localStorage.getItem("uai-grid-layout")||"horizontal");
   const [dragSlot,setDragSlot]=useState(null); // {materiaId, fromDia, fromFid}
   const [overSlot,setOverSlot]=useState(null); // "dia-fid"
   const franjasLocal=franjas||getFranjas();
-  useEffect(()=>{
-    const t=setInterval(()=>setNow(new Date()),60000);
-    return()=>clearInterval(t);
-  },[]);
-
   const dia=getDiaActual();
   const momento=getMomentoActual();
-  // use prop franjas if provided, else read from localStorage
-  const franjaIds=Object.keys(franjas);
-  const momentoIdx=franjaIds.indexOf(momento);
-
-  // Materias para ahora
-  const ahoraM=materias.filter(m=>(m.slots||[]).some(s=>s.dia===dia&&s.momento===momento));
-  // Materias para más tarde hoy
-  const masTardeM=materias.filter(m=>
-    !ahoraM.includes(m)&&
-    (m.slots||[]).some(s=>s.dia===dia&&franjaIds.indexOf(s.momento)>momentoIdx)
-  );
-  // Semana: mins por materia
-  const weekStart=getWeekStart();
-  const minsSemana=useMemo(()=>{
-    const mp={};
-    sesiones.forEach(s=>{if(new Date(s.inicio)>=weekStart)mp[s.materiaId]=(mp[s.materiaId]||0)+s.minutos;});
-    return mp;
-  },[sesiones]);
-
-  function fmtHora(){
-    return `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  }
-  const diasLabel=["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
-  const mesesLabel=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-
-  function MateriaCard({m,badge,badgeColor,onStartPomo,onEditObjetivos}){
-    const mins=minsSemana[m.id]||0;
-    const hs=parseFloat((mins/60).toFixed(1));
-    const minH=m.horasMin||0,maxH=m.horasMax||0;
-    const pct=maxH?Math.min(100,Math.round(hs/maxH*100)):0;
-    const tarPend=tareas.filter(t=>t.materiaId===m.id&&t.estado!=="completado");
-    const obligs=tarPend.filter(t=>t.obligatorio).length;
-    const semColor={red:"var(--err-text)",yellow:"var(--warn-text)",green:"var(--ok-text)",gray:"var(--text3)"};
-    const sem=!minH&&!maxH?"gray":hs>=maxH?"green":hs>=minH?"yellow":"red";
-    const c=semColor[sem];
-
-    return e("div",{style:{
-      background:"var(--bg1)",border:"1px solid var(--border)",
-      borderRadius:9,padding:16,borderLeft:`4px solid ${m.color}`
-    }},
-      e("div",{style:{marginBottom:10}},
-        e("div",{style:{fontSize:14,fontWeight:600,color:"var(--text0)",
-          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.nombre),
-        e("div",{style:{fontSize:10,color:"var(--text3)",marginTop:2}},
-          m.codigo+(periodoTag(m)?" · "+periodoTag(m):""))
-      ),
-      (minH||maxH)&&e("div",{style:{marginBottom:10}},
-        e("div",{style:{display:"flex",justifyContent:"space-between",fontSize:10,
-          color:"var(--text2)",marginBottom:3}},
-          e("span","Esta semana"),
-          e("span",{style:{color:c,fontWeight:600}},hs+"h / "+minH+"–"+maxH+"h objetivo")
-        ),
-        e("div",{style:{height:5,background:"var(--border)",borderRadius:3,overflow:"hidden"}},
-          e("div",{style:{height:"100%",width:pct+"%",background:c,borderRadius:3,transition:"width .4s"}})
-        )
-      ),
-
-      e("button",{
-          onClick:()=>onStartPomo(m),
-          style:{width:"100%",background:"var(--info-bg)",border:"1px solid var(--accent)",
-            color:"var(--info-text)",padding:"8px 12px",borderRadius:6,cursor:"pointer",
-            fontFamily:"inherit",fontSize:12,fontWeight:700}
-        },"▶ Iniciar sesión de estudio")
-    );
-  }
 
   return e("div",{style:{paddingBottom:32}},
-    // ── HEADER ──
-    e("div",{style:{marginBottom:20}},
-      e("div",{style:{fontSize:28,fontWeight:700,color:"var(--text0)",marginBottom:2}},fmtHora()),
-      e("div",{style:{display:"flex",alignItems:"center",gap:8,marginTop:2}},
-        e("span",{style:{fontSize:14,color:"var(--text2)"}},
-          `${diasLabel[now.getDay()]}, ${now.getDate()} de ${mesesLabel[now.getMonth()]} ${now.getFullYear()}`
-        ),
-        e("span",{style:{fontSize:14}},(franjasLocal[momento]||{}).emoji||""),
-        e("button",{className:"sico",style:{width:20,height:20,fontSize:10},
-          title:"Editar franjas del día",onClick:()=>setEditFranjas(true)},"✎"),
-      ),
-      editFranjas&&e(FranjasEditor,{
-        franjas:franjasLocal,
-        onSave:v=>{onSaveFranjas(v);setEditFranjas(false);},
-        onClose:()=>setEditFranjas(false)
-      }),
-      Object.keys(franjasLocal).every(fid=>!materias.some(m=>(m.slots||[]).some(s=>s.dia===dia&&s.momento===fid)))
-        &&e("div",{style:{fontSize:11,color:"var(--text3)",marginTop:6,fontStyle:"italic",textAlign:"center"}},
-          "Sin materias asignadas para hoy — configurá tu horario en la grilla semanal")
-    ),
-
-
-
-    // ── TRES SECCIONES: una por franja ──
-    Object.entries(franjasLocal).map(([fid,f])=>{
-      const matsEnFranja=materias.filter(m=>(m.slots||[]).some(s=>s.dia===dia&&s.momento===fid));
-      const isActive=fid===momento;
-      const opacity=isActive?1:0.45;
-
-      return e("div",{key:fid,style:{marginBottom:isActive?28:16,opacity,transition:"opacity .3s"}},
-        // Section header
-        e("div",{style:{fontSize:isActive?12:10,color:isActive?"var(--text1)":"var(--text3)",
-          letterSpacing:".1em",fontWeight:600,marginBottom:isActive?12:8,
-          display:"flex",alignItems:"center",gap:6}},
-          e("span",null,f.emoji),
-          e("span",null,f.label.toUpperCase()),
-          isActive&&e("span",{style:{color:"var(--accent)",fontSize:10,fontWeight:400,
-            letterSpacing:0}},"— ahora")
-        ),
-        // Cards
-        e(React.Fragment,{key:"cards"},
-        matsEnFranja.length===0&&e("div",{style:{
-          padding:isActive?"14px 16px":"8px 12px",
-          background:"var(--bg1)",border:"1px dashed var(--border)",
-          borderRadius:7,fontSize:isActive?12:10,
-          color:"var(--text3)",fontStyle:"italic"
-        }},"Sin materias asignadas para este momento"),
-        matsEnFranja.length>0&&e("div",{style:{display:"grid",
-          gridTemplateColumns:isActive?"repeat(auto-fill,minmax(280px,1fr))":"repeat(auto-fill,minmax(200px,1fr))",
-          gap:isActive?12:8}},
-          matsEnFranja.map(m=>{
-            const mins=minsSemana[m.id]||0;
-            const hs=parseFloat((mins/60).toFixed(1));
-            const minH=m.horasMin||0,maxH=m.horasMax||0;
-            const pct=maxH?Math.min(100,Math.round(hs/maxH*100)):0;
-            const sem=!minH&&!maxH?"gray":hs>=maxH?"green":hs>=minH?"yellow":"red";
-            const c={red:"var(--err-text)",yellow:"var(--warn-text)",green:"var(--ok-text)",gray:"var(--text3)"}[sem];
-
-            if(isActive){
-              // Full card
-              return e("div",{key:m.id,style:{background:"var(--bg1)",border:"1px solid var(--border)",
-                borderRadius:9,padding:16,borderLeft:`4px solid ${m.color}`}},
-                e("div",{style:{fontSize:14,fontWeight:600,color:"var(--text0)",marginBottom:2,
-                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.nombre),
-                e("div",{style:{fontSize:10,color:"var(--text3)",marginBottom:10}},
-                  m.codigo+(periodoTag(m)?" · "+periodoTag(m):"")),
-                (minH||maxH)&&e("div",{style:{marginBottom:12}},
-                  e("div",{style:{display:"flex",justifyContent:"space-between",fontSize:10,
-                    color:"var(--text2)",marginBottom:3}},
-                    e("span","Esta semana"),
-                    e("span",{style:{color:c,fontWeight:600}},hs+"h / "+minH+"–"+maxH+"h")
-                  ),
-                  e("div",{style:{height:5,background:"var(--border)",borderRadius:3,overflow:"hidden"}},
-                    e("div",{style:{height:"100%",width:pct+"%",background:c,borderRadius:3,transition:"width .4s"}})
-                  )
-                ),
-                e("button",{onClick:()=>onStartPomo(m),
-                  style:{width:"100%",background:"var(--info-bg)",border:"1px solid var(--accent)",
-                    color:"var(--info-text)",padding:"8px 12px",borderRadius:6,cursor:"pointer",
-                    fontFamily:"inherit",fontSize:12,fontWeight:700}
-                },"▶ Iniciar sesión de estudio")
-              );
-            } else {
-              // Compact card
-              return e("div",{key:m.id,style:{background:"var(--bg1)",border:"1px solid var(--border)",
-                borderRadius:7,padding:"8px 12px",borderLeft:`3px solid ${m.color}88`,
-                display:"flex",alignItems:"center",gap:8}},
-                e("div",{style:{flex:1,minWidth:0}},
-                  e("div",{style:{fontSize:12,fontWeight:500,color:"var(--text1)",
-                    overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.nombre),
-                  (minH||maxH)&&e("div",{style:{height:3,background:"var(--border)",borderRadius:2,
-                    overflow:"hidden",marginTop:4}},
-                    e("div",{style:{height:"100%",width:pct+"%",background:c,borderRadius:2}})
-                  )
-                )
-              );
-            }
-          })
-        )
-        ) // end Fragment
-      );
-    }),
-
     // ── SLOT CELL EDITOR ──
     editSlotCell&&e("div",{className:"ov",onClick:()=>setEditSlotCell(null)},
       e("div",{className:"mod",style:{maxWidth:340},onClick:ev=>ev.stopPropagation()},
@@ -3238,6 +3161,192 @@ function HoyView({materias,sesiones,tareas,isDark,onStartPomo,mmap,tmap,onEditOb
   );
 }
 
+function HoyView({materias,sesiones,tareas,isDark,onStartPomo,mmap,tmap,onEditObjetivos,franjas,onSaveFranjas,onEditMateria,urgentTasks,onMoveSlot}){
+  const [now,setNow]=useState(new Date());
+  const [editFranjas,setEditFranjas]=useState(false);
+  const [editSlotCell,setEditSlotCell]=useState(null); // {dia,fid}
+  const [gridLayout,setGridLayout]=useState(()=>localStorage.getItem("uai-grid-layout")||"horizontal");
+  const [dragSlot,setDragSlot]=useState(null); // {materiaId, fromDia, fromFid}
+  const [overSlot,setOverSlot]=useState(null); // "dia-fid"
+  const franjasLocal=franjas||getFranjas();
+  useEffect(()=>{
+    const t=setInterval(()=>setNow(new Date()),60000);
+    return()=>clearInterval(t);
+  },[]);
+
+  const dia=getDiaActual();
+  const momento=getMomentoActual();
+  // use prop franjas if provided, else read from localStorage
+  const franjaIds=Object.keys(franjas);
+  const momentoIdx=franjaIds.indexOf(momento);
+
+  // Materias para ahora
+  const ahoraM=materias.filter(m=>(m.slots||[]).some(s=>s.dia===dia&&s.momento===momento));
+  // Materias para más tarde hoy
+  const masTardeM=materias.filter(m=>
+    !ahoraM.includes(m)&&
+    (m.slots||[]).some(s=>s.dia===dia&&franjaIds.indexOf(s.momento)>momentoIdx)
+  );
+  // Semana: mins por materia
+  const weekStart=getWeekStart();
+  const minsSemana=useMemo(()=>{
+    const mp={};
+    sesiones.forEach(s=>{if(new Date(s.inicio)>=weekStart)mp[s.materiaId]=(mp[s.materiaId]||0)+s.minutos;});
+    return mp;
+  },[sesiones]);
+
+  function fmtHora(){
+    return `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  }
+  const diasLabel=["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  const mesesLabel=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+  function MateriaCard({m,badge,badgeColor,onStartPomo,onEditObjetivos}){
+    const mins=minsSemana[m.id]||0;
+    const hs=parseFloat((mins/60).toFixed(1));
+    const minH=m.horasMin||0,maxH=m.horasMax||0;
+    const pct=maxH?Math.min(100,Math.round(hs/maxH*100)):0;
+    const tarPend=tareas.filter(t=>t.materiaId===m.id&&t.estado!=="completado");
+    const obligs=tarPend.filter(t=>t.obligatorio).length;
+    const semColor={red:"var(--err-text)",yellow:"var(--warn-text)",green:"var(--ok-text)",gray:"var(--text3)"};
+    const sem=!minH&&!maxH?"gray":hs>=maxH?"green":hs>=minH?"yellow":"red";
+    const c=semColor[sem];
+
+    return e("div",{style:{
+      background:"var(--bg1)",border:"1px solid var(--border)",
+      borderRadius:9,padding:16,borderLeft:`4px solid ${m.color}`
+    }},
+      e("div",{style:{marginBottom:10}},
+        e("div",{style:{fontSize:14,fontWeight:600,color:"var(--text0)",
+          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.nombre),
+        e("div",{style:{fontSize:10,color:"var(--text3)",marginTop:2}},
+          m.codigo+(periodoTag(m)?" · "+periodoTag(m):""))
+      ),
+      (minH||maxH)&&e("div",{style:{marginBottom:10}},
+        e("div",{style:{display:"flex",justifyContent:"space-between",fontSize:10,
+          color:"var(--text2)",marginBottom:3}},
+          e("span","Esta semana"),
+          e("span",{style:{color:c,fontWeight:600}},hs+"h / "+minH+"–"+maxH+"h objetivo")
+        ),
+        e("div",{style:{height:5,background:"var(--border)",borderRadius:3,overflow:"hidden"}},
+          e("div",{style:{height:"100%",width:pct+"%",background:c,borderRadius:3,transition:"width .4s"}})
+        )
+      ),
+
+      e("button",{
+          onClick:()=>onStartPomo(m),
+          style:{width:"100%",background:"var(--info-bg)",border:"1px solid var(--accent)",
+            color:"var(--info-text)",padding:"8px 12px",borderRadius:6,cursor:"pointer",
+            fontFamily:"inherit",fontSize:12,fontWeight:700}
+        },"▶ Iniciar sesión de estudio")
+    );
+  }
+
+  return e("div",{style:{paddingBottom:32}},
+    // ── HEADER ──
+    e("div",{style:{marginBottom:20}},
+      e("div",{style:{fontSize:28,fontWeight:700,color:"var(--text0)",marginBottom:2}},fmtHora()),
+      e("div",{style:{display:"flex",alignItems:"center",gap:8,marginTop:2}},
+        e("span",{style:{fontSize:14,color:"var(--text2)"}},
+          `${diasLabel[now.getDay()]}, ${now.getDate()} de ${mesesLabel[now.getMonth()]} ${now.getFullYear()}`
+        ),
+        e("span",{style:{fontSize:14}},(franjasLocal[momento]||{}).emoji||""),
+        e("button",{className:"sico",style:{width:20,height:20,fontSize:10},
+          title:"Editar franjas del día",onClick:()=>setEditFranjas(true)},"✎"),
+      ),
+      editFranjas&&e(FranjasEditor,{
+        franjas:franjasLocal,
+        onSave:v=>{onSaveFranjas(v);setEditFranjas(false);},
+        onClose:()=>setEditFranjas(false)
+      }),
+      Object.keys(franjasLocal).every(fid=>!materias.some(m=>(m.slots||[]).some(s=>s.dia===dia&&s.momento===fid)))
+        &&e("div",{style:{fontSize:11,color:"var(--text3)",marginTop:6,fontStyle:"italic",textAlign:"center"}},
+          "Sin materias asignadas para hoy — configurá tu horario en la grilla semanal")
+    ),
+
+
+
+    // ── TRES SECCIONES: una por franja ──
+    Object.entries(franjasLocal).map(([fid,f])=>{
+      const matsEnFranja=materias.filter(m=>(m.slots||[]).some(s=>s.dia===dia&&s.momento===fid));
+      const isActive=fid===momento;
+      const opacity=isActive?1:0.45;
+
+      return e("div",{key:fid,style:{marginBottom:isActive?28:16,opacity,transition:"opacity .3s"}},
+        // Section header
+        e("div",{style:{fontSize:isActive?12:10,color:isActive?"var(--text1)":"var(--text3)",
+          letterSpacing:".1em",fontWeight:600,marginBottom:isActive?12:8,
+          display:"flex",alignItems:"center",gap:6}},
+          e("span",null,f.emoji),
+          e("span",null,f.label.toUpperCase()),
+          isActive&&e("span",{style:{color:"var(--accent)",fontSize:10,fontWeight:400,
+            letterSpacing:0}},"— ahora")
+        ),
+        // Cards
+        e(React.Fragment,{key:"cards"},
+        matsEnFranja.length===0&&e("div",{style:{
+          padding:isActive?"14px 16px":"8px 12px",
+          background:"var(--bg1)",border:"1px dashed var(--border)",
+          borderRadius:7,fontSize:isActive?12:10,
+          color:"var(--text3)",fontStyle:"italic"
+        }},"Sin materias asignadas para este momento"),
+        matsEnFranja.length>0&&e("div",{style:{display:"grid",
+          gridTemplateColumns:isActive?"repeat(auto-fill,minmax(280px,1fr))":"repeat(auto-fill,minmax(200px,1fr))",
+          gap:isActive?12:8}},
+          matsEnFranja.map(m=>{
+            const mins=minsSemana[m.id]||0;
+            const hs=parseFloat((mins/60).toFixed(1));
+            const minH=m.horasMin||0,maxH=m.horasMax||0;
+            const pct=maxH?Math.min(100,Math.round(hs/maxH*100)):0;
+            const sem=!minH&&!maxH?"gray":hs>=maxH?"green":hs>=minH?"yellow":"red";
+            const c={red:"var(--err-text)",yellow:"var(--warn-text)",green:"var(--ok-text)",gray:"var(--text3)"}[sem];
+
+            if(isActive){
+              // Full card
+              return e("div",{key:m.id,style:{background:"var(--bg1)",border:"1px solid var(--border)",
+                borderRadius:9,padding:16,borderLeft:`4px solid ${m.color}`}},
+                e("div",{style:{fontSize:14,fontWeight:600,color:"var(--text0)",marginBottom:2,
+                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.nombre),
+                e("div",{style:{fontSize:10,color:"var(--text3)",marginBottom:10}},
+                  m.codigo+(periodoTag(m)?" · "+periodoTag(m):"")),
+                (minH||maxH)&&e("div",{style:{marginBottom:12}},
+                  e("div",{style:{display:"flex",justifyContent:"space-between",fontSize:10,
+                    color:"var(--text2)",marginBottom:3}},
+                    e("span","Esta semana"),
+                    e("span",{style:{color:c,fontWeight:600}},hs+"h / "+minH+"–"+maxH+"h")
+                  ),
+                  e("div",{style:{height:5,background:"var(--border)",borderRadius:3,overflow:"hidden"}},
+                    e("div",{style:{height:"100%",width:pct+"%",background:c,borderRadius:3,transition:"width .4s"}})
+                  )
+                ),
+                e("button",{onClick:()=>onStartPomo(m),
+                  style:{width:"100%",background:"var(--info-bg)",border:"1px solid var(--accent)",
+                    color:"var(--info-text)",padding:"8px 12px",borderRadius:6,cursor:"pointer",
+                    fontFamily:"inherit",fontSize:12,fontWeight:700}
+                },"▶ Iniciar sesión de estudio")
+              );
+            } else {
+              // Compact card
+              return e("div",{key:m.id,style:{background:"var(--bg1)",border:"1px solid var(--border)",
+                borderRadius:7,padding:"8px 12px",borderLeft:`3px solid ${m.color}88`,
+                display:"flex",alignItems:"center",gap:8}},
+                e("div",{style:{flex:1,minWidth:0}},
+                  e("div",{style:{fontSize:12,fontWeight:500,color:"var(--text1)",
+                    overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.nombre),
+                  (minH||maxH)&&e("div",{style:{height:3,background:"var(--border)",borderRadius:2,
+                    overflow:"hidden",marginTop:4}},
+                    e("div",{style:{height:"100%",width:pct+"%",background:c,borderRadius:2}})
+                  )
+                )
+              );
+            }
+          })
+        )
+        ) // end Fragment
+      );
+    }),
+  );
+}
 
 function FranjasEditor({franjas,onSave,onClose,inline=false}){
   const f=franjas||DEFAULT_FRANJAS;
@@ -3537,7 +3646,7 @@ const GUIDE_SECTIONS=[
   {id:"tareas",label:"≡ Tareas y Backlog",content:[
     {title:"Backlog",text:"Lista de todas las tareas ordenadas por urgencia. Podés filtrar por materia y tipo. El toggle ○◑● cambia el estado directamente desde la lista."},
     {title:"Kanban",text:"Vista de columnas: Pendiente / En progreso / Completado. Ideal para ver el flujo de trabajo de un vistazo."},
-    {title:"Calendario",text:"Muestra las tareas en el mes según su fecha límite. Los chips muestran el título y la materia. Hacé click para abrir el detalle."},
+    {title:"Calendario",text:"Muestra eventos derivados de fecha de inicio y fecha límite. Las tareas pueden aparecer como inicio → y fin ←, con enlace al evento relacionado cuando exista."},
     {title:"Checklist",text:"Cada tarea puede tener un checklist de ítems. El progreso se muestra como barra en el backlog y el kanban."},
     {title:"Obligatorio vs opcional",text:"El indicador 🔴 marca las tareas obligatorias. Usalo para distinguir entregas que no podés saltear de lecturas opcionales."},
   ]},
@@ -3658,6 +3767,8 @@ function App(){
   const [view,setView]=useState(()=>localStorage.getItem("uai-last-view")||"hoy");
   const [fm,setFm]=useState("all");
   const [ft,setFt]=useState("all");
+  const [calShowInicio,setCalShowInicio]=useState(true);
+  const [calShowFin,setCalShowFin]=useState(true);
   const [calM,setCalM]=useState(new Date(2026,2,1));
   // store only the task ID so sel auto-updates when data changes
   const [selId,setSelId]=useState(null);
@@ -3753,8 +3864,8 @@ function App(){
   const sel=selId?data.tareas.find(t=>t.id===selId)||null:null;
 
   function move(id,s){setData(d=>({...d,tareas:d.tareas.map(t=>t.id===id?{...t,estado:s}:t)}));}
-  function moveTaskToDate(id,fechaLimite){
-    setData(d=>({...d,tareas:d.tareas.map(t=>t.id===id?{...t,fechaLimite}:t)}));
+  function moveTaskToDate(id,fecha,field="fechaLimite"){
+    setData(d=>({...d,tareas:d.tareas.map(t=>t.id===id?{...t,[field]:fecha}:t)}));
   }
   function toggleItem(taskId,itemId){
     setData(d=>({...d,tareas:d.tareas.map(t=>{
@@ -4016,7 +4127,7 @@ function App(){
       e(PeriodoSelector,{anios:aniosDisponibles,fAnio,fPeriodos,setFAnio,togglePeriodo}),
       e("nav",{className:"nav",style:{marginLeft:24}},
         e("div",{style:{display:"flex",gap:0,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:7,padding:3}},
-          [["hoy","◈ Hoy"],["materias","◉ Materias"]].map(([v,l])=>
+          [["hoy","◈ Hoy"],["semana","◈ Semana"],["materias","◉ Materias"]].map(([v,l])=>
             e("button",{key:v,className:"nb "+(view===v?"nba":""),onClick:()=>setView(v)},l)
           )
         ),
@@ -4052,7 +4163,7 @@ function App(){
     ),
     impErr&&e("div",{className:"errbanner"},"⚠ "+impErr),
     e(UrgentBanner,{urgentTasks,alertas,mmap,onSelTask:id=>{setSelId(id);}}),
-    view!=="materias"&&view!=="hoy"&&e("div",{className:"fbar"},
+    !["hoy","semana","materias"].includes(view)&&e("div",{className:"fbar"},
       e("select",{value:fm,onChange:ev=>setFm(ev.target.value)},
         e("option",{value:"all"},"Todas las materias"),
         materiasFiltradas.map(m=>e("option",{key:m.id,value:m.id},m.nombre+(periodoTag(m)?" — "+periodoTag(m):"")))
@@ -4076,9 +4187,18 @@ function App(){
           })}));
         }
       }),
+      view==="semana"   &&e(WeekView,{materias:materiasFiltradas,isDark,onEditMateria:editMateriaHoras,onMoveSlot:(materiaId,fromDia,fromFid,toDia,toFid)=>{
+        setData(d=>({...d,materias:d.materias.map(m=>{
+          if(m.id!==materiaId) return m;
+          const slots=(m.slots||[]).filter(s=>!(s.dia===fromDia&&s.momento===fromFid));
+          if(!slots.some(s=>s.dia===toDia&&s.momento===toFid))
+            slots.push({dia:toDia,momento:toFid});
+          return {...m,slots};
+        })}));
+      },franjas}),
       view==="backlog"  &&e(Backlog,  {tareas:filtered,mmap,tmap,isDark,move,onSel:id=>setSelId(id)}),
       view==="kanban"   &&e(Kanban,   {tareas:filtered,mmap,tmap,isDark,move,onSel:id=>setSelId(id)}),
-      view==="calendar" &&e(Cal,      {tareas:filtered,mmap,tmap,isDark,month:calM,setMonth:setCalM,onSel:id=>setSelId(id),onMoveTask:moveTaskToDate}),
+      view==="calendar" &&e(Cal,      {tareas:filtered,mmap,tmap,isDark,month:calM,setMonth:setCalM,onSel:id=>setSelId(id),onMoveTask:moveTaskToDate,showInicio:calShowInicio,showFin:calShowFin,setShowInicio:setCalShowInicio,setShowFin:setCalShowFin}),
       view==="materias" &&e(MateriasView,{materias:materiasFiltradas,sesiones:data.sesiones||[],tareas:data.tareas,tmap,isDark,onStartPomo:startPomoFromMateria,onEditMateria:editMateriaHoras,onManualSession:setManualSession})
     ),
     sel&&e(TaskModal,{task:sel,mat:mmap[sel.materiaId],tipo:tmap[sel.tipo],isDark,move,toggleItem,onStartPomo:startPomoFromTask,sesiones:data.sesiones||[],
