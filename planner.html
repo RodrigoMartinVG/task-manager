@@ -3601,7 +3601,10 @@
                     e("span", { style: { fontSize: 15, width: 22, textAlign: "center", flexShrink: 0, marginTop: 1 } }, tp.icon),
                     e("div", { className: "trc" },
                         m && e("span", { style: { fontSize: 9, color: "var(--text2)", fontWeight: 600, letterSpacing: ".03em", display: "block", marginBottom: 1 } }, m.nombre),
-                        e("span", { className: "trt", style: { textDecoration: t.estado === "completado" ? "line-through" : "none" } }, t.titulo),
+                        e("span", { className: "trt", style: { textDecoration: t.estado === "completado" ? "line-through" : "none" } }, 
+                            t.titulo,
+                            t.link_vc && e("span", { style: { marginLeft: 8, fontSize: 12, verticalAlign: "middle" }, title: "Tiene link de videollamada" }, "📹")
+                        ),
                         t.fechaInicio && e("div", { style: { fontSize: 9, color: "var(--text3)", marginTop: 1 } },
                             "▶ " + fd(t.fechaInicio) + (t.fechaLimite ? " → " + fd(t.fechaLimite) : "")
                         ),
@@ -3751,7 +3754,10 @@
                             },
                                 e("div", { className: "kcard-body" },
                                     m && e("div", { className: "kcard-mat" }, m.nombre),
-                                    e("div", { className: "kct", style: { textDecoration: t.estado === "completado" ? "line-through" : "none" } }, t.titulo),
+                                    e("div", { className: "kct", style: { textDecoration: t.estado === "completado" ? "line-through" : "none" } }, 
+                                        t.titulo,
+                                        t.link_vc && e("span", { style: { marginLeft: 6, fontSize: 11 }, title: "Videollamada" }, "📹")
+                                    ),
                                     e("div", { className: "kcard-meta" },
                                         e("span", { className: "badge", style: { ...bs, fontSize: 9, padding: "1px 6px" } }, tp.icon + " " + tp.label),
                                         t.obligatorio && e("span", {
@@ -4090,6 +4096,11 @@
                                 )
                             )
                         ),
+                        task.link_vc && e("button", {
+                            className: "pomo-start-btn",
+                            style: { background: "var(--accent)", color: "white", marginBottom: 10, border: "none" },
+                            onClick: () => window.open(task.link_vc, "_blank")
+                        }, "📹 Unirse a video llamada"),
                         e("button", { className: "pomo-start-btn", onClick: () => onStartPomo && onStartPomo(task) },
                             "▶ Iniciar sesión de estudio"
                         ),
@@ -4139,6 +4150,7 @@
                 fechaLimite: task.fechaLimite ?? "",
                 estado: task.estado || "pendiente", obligatorio: task.obligatorio !== undefined ? task.obligatorio : true,
                 items: task.items || [],
+                link_vc: task.link_vc || "",
                 ...(task.id ? { id: task.id } : {})
             });
             const [err, setErr] = useState("");
@@ -4167,6 +4179,7 @@
                         err && e("div", { className: "ferr" }, err),
                         e("div", { className: "fg" }, e("label", { className: "fl" }, "TÍTULO *"), e("input", { className: "fi", type: "text", value: f.titulo, onChange: ev => s("titulo", ev.target.value), placeholder: "Ej: TP2 - Diagrama de secuencia", autoFocus: true })),
                         e("div", { className: "fg" }, e("label", { className: "fl" }, "DESCRIPCIÓN"), e("textarea", { className: "fi", value: f.descripcion, onChange: ev => s("descripcion", ev.target.value), placeholder: "Descripción opcional..." })),
+                        e("div", { className: "fg" }, e("label", { className: "fl" }, "LINK VIDEOLLAMADA (ZOOM, MEET, ETC)"), e("input", { className: "fi", type: "url", value: f.link_vc, onChange: ev => s("link_vc", ev.target.value), placeholder: "https://meet.google.com/..." })),
                         e("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } },
                             e("div", { className: "fg" }, e("label", { className: "fl" }, "MATERIA *"), e("select", { className: "fi", value: f.materiaId, onChange: ev => s("materiaId", ev.target.value) }, materias.map(m => e("option", { key: m.id, value: m.id }, m.nombre + (periodoTag(m) ? " — " + periodoTag(m) : ""))))),
                             e("div", { className: "fg" }, e("label", { className: "fl" }, "TIPO"), e("select", { className: "fi", value: f.tipo, onChange: ev => s("tipo", ev.target.value) }, tipos.map(t => e("option", { key: t.id, value: t.id }, t.icon + " " + t.label))))
