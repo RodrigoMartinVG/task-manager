@@ -381,6 +381,7 @@ function badgeStyle(bg,accent,isDark){
   return isDark?{background:accent+"22",color:accent,border:`1px solid ${accent}44`}:{background:bg,color:accent};
 }
 function urgColor(days,estado,isDark){
+  if(days===null||days===undefined)return null;
   if(estado==="completado")return isDark?"#50d890":"#167a58";
   if(days<0) return isDark?"#f07070":"#962820";
   if(days<=3)return isDark?"#f080a0":"#a83860";
@@ -712,8 +713,8 @@ function getMateriasMasTarde(materias){
   return materias.filter(m=>(m.slots||[]).some(s=>s.dia===dia&&restantes.includes(s.momento)));
 }
 
-function daysUntil(d){const t=new Date();t.setHours(0,0,0,0);return Math.ceil((new Date(d+"T00:00:00")-t)/864e5);}
-function fd(s){const d=new Date(s+"T00:00:00");return`${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}`;}
+function daysUntil(d){if(!d)return null;const t=new Date();t.setHours(0,0,0,0);return Math.ceil((new Date(d+"T00:00:00")-t)/864e5);}
+function fd(s){if(!s)return "";const d=new Date(s+"T00:00:00");return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}`;}
 /* Hash rápido de los datos para detectar cambios sin dirty-checking profundo */
 function hashData(d){return JSON.stringify(d);}
 
@@ -1368,7 +1369,9 @@ function Backlog({tareas,mmap,tmap,isDark,move,onSel}){
   const sorted=[...tareas].sort((a,b)=>{
     if(a.estado==="completado"&&b.estado!=="completado")return 1;
     if(b.estado==="completado"&&a.estado!=="completado")return-1;
-    return new Date(a.fechaLimite)-new Date(b.fechaLimite);
+    const av=a.fechaLimite?new Date(a.fechaLimite+"T00:00:00").getTime():Number.POSITIVE_INFINITY;
+    const bv=b.fechaLimite?new Date(b.fechaLimite+"T00:00:00").getTime():Number.POSITIVE_INFINITY;
+    return av-bv;
   });
   return e("div",{className:"bl"},sorted.map(t=>{
     const m=mmap[t.materiaId],tp=tmap[t.tipo]||fb;
@@ -1384,6 +1387,9 @@ function Backlog({tareas,mmap,tmap,isDark,move,onSel}){
       e("div",{className:"trc"},
         m&&e("span",{style:{fontSize:9,color:"var(--text2)",fontWeight:600,letterSpacing:".03em",display:"block",marginBottom:1}},m.nombre),
         e("span",{className:"trt",style:{textDecoration:t.estado==="completado"?"line-through":"none"}},t.titulo),
+        t.fechaInicio&&e("div",{style:{fontSize:9,color:"var(--text3)",marginTop:1}},
+          "▶ "+fd(t.fechaInicio)+(t.fechaLimite?" → "+fd(t.fechaLimite):"")
+        ),
         pct!==null&&e(ProgBar,{pct,isDark,size:"sm",showFrac:`${doneCount}/${items.length}`})
       ),
       e("div",{className:"trmt"},
@@ -1459,7 +1465,7 @@ function Kanban({tareas,mmap,tmap,isDark,move,onSel}){
   }
 
   return e("div",{className:"kb"},cols.map(col=>{
-    const ct=tareas.filter(t=>t.estado===col.k).sort((a,b)=>new Date(a.fechaLimite)-new Date(b.fechaLimite));
+    const ct=tareas.filter(t=>t.estado===col.k).sort((a,b)=>{const da=fechaPrincipal(a),db=fechaPrincipal(b);return (da||"9999").localeCompare(db||"9999");});
     const isOver=overCol===col.k&&dragging;
     const draggedInCol=ct.some(t=>t.id===dragging);
 
@@ -1638,7 +1644,7 @@ function Cal({tareas,mmap,tmap,isDark,month,setMonth,onSel,onMoveTask}){
   const byDate=useMemo(()=>{
     const mp={};
     tareas.forEach(t=>{
-      if(!t.fechaLimite) return;
+      if(!t.fechaLimite&&!t.fechaInicio) return;
       const k=t.fechaLimite;
       if(!mp[k]) mp[k]=[];
       mp[k].push(t);
@@ -1793,7 +1799,8 @@ function TaskModal({task,mat,tipo,isDark,move,toggleItem,onStartPomo,sesiones,on
       e("div",{className:"mbody"},
         task.descripcion&&e("p",{style:{color:"var(--text1)",fontSize:13,lineHeight:1.65,marginBottom:14}},task.descripcion),
         e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}},
-          e("div",{className:"ibox"},e("span",{className:"ilb"},"FECHA LÍMITE"),e("span",{className:"ivl"},fd(task.fechaLimite))),
+          task.fechaInicio&&e("div",{className:"ibox"},e("span",{className:"ilb"},"FECHA INICIO"),e("span",{className:"ivl"},fd(task.fechaInicio))),
+      task.fechaLimite&&e("div",{className:"ibox"},e("span",{className:"ilb"},"FECHA LÍMITE"),e("span",{className:"ivl"},fd(task.fechaLimite))),
           e("div",{className:"ibox"},e("span",{className:"ilb"},"TIPO"),
             e("span",{className:"ivl"},task.obligatorio?"🔴 Obligatorio":"⚪ Opcional")),
           e("div",{className:"ibox"},e("span",{className:"ilb"},"TIEMPO DEDICADO"),
@@ -1850,7 +1857,8 @@ function FormModal({task,materias,tipos,isDark,onSave,onClose}){
     titulo:task.titulo||"",descripcion:task.descripcion||"",
     materiaId:task.materiaId||(materias[0]?.id||""),
     tipo:task.tipo||(tipos[0]?.id||""),
-    fechaLimite:task.fechaLimite||new Date().toISOString().slice(0,10),
+    fechaInicio:task.fechaInicio??"",
+    fechaLimite:task.fechaLimite??"",
     estado:task.estado||"pendiente",obligatorio:task.obligatorio!==undefined?task.obligatorio:true,
     items:task.items||[],
     ...(task.id?{id:task.id}:{})
@@ -1858,7 +1866,12 @@ function FormModal({task,materias,tipos,isDark,onSave,onClose}){
   const [err,setErr]=useState("");
   function s(k,v){setF(x=>({...x,[k]:v}));}
   function go(){if(!f.titulo.trim()){setErr("El título es obligatorio");return;}
-    onSave({...f,items:f.items.filter(it=>it.label.trim())});
+    onSave({
+      ...f,
+      fechaInicio:f.fechaInicio||null,
+      fechaLimite:f.fechaLimite||null,
+      items:f.items.filter(it=>it.label.trim())
+    });
   }
   const tp=tipos.find(t=>t.id===f.tipo)||tipos[0];
   const mat=materias.find(m=>m.id===f.materiaId);
@@ -1880,12 +1893,37 @@ function FormModal({task,materias,tipos,isDark,onSave,onClose}){
           e("div",{className:"fg"},e("label",{className:"fl"},"TIPO"),e("select",{className:"fi",value:f.tipo,onChange:ev=>s("tipo",ev.target.value)},tipos.map(t=>e("option",{key:t.id,value:t.id},t.icon+" "+t.label))))
         ),
         e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}},
-          e("div",{className:"fg"},e("label",{className:"fl"},"FECHA *"),e("input",{className:"fi",type:"date",value:f.fechaLimite,onChange:ev=>s("fechaLimite",ev.target.value)})),
-          e("div",{className:"fg"},
-            e("label",{className:"fl"},"HORA (OPCIONAL)"),
-            e("input",{className:"fi",type:"time",value:f.hora||"",onChange:ev=>s("hora",ev.target.value)})
+          e("div",{className:"fg",style:{gridColumn:"1 / -1"}},
+            e("div",{style:{display:"flex",alignItems:"center",gap:5,marginBottom:6}},
+              e("label",{className:"fl",style:{margin:0}},"FECHAS"),
+              e("span",{
+                title:"Fecha de inicio: ¿cuándo deberías empezar esta tarea? (opcional).\nFecha límite: ¿cuándo debe estar completada? (opcional).\nEn el futuro, la fecha de inicio generará alertas para recordarte pasar la tarea a En progreso.",
+                style:{display:"inline-flex",alignItems:"center",justifyContent:"center",
+                  width:14,height:14,borderRadius:"50%",border:"1px solid var(--text3)",
+                  fontSize:9,color:"var(--text3)",cursor:"help",flexShrink:0,userSelect:"none"}
+              },"?")
+            ),
+            e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,alignItems:"end"}},
+              e("div",null,
+                e("div",{style:{fontSize:9,color:"var(--text3)",marginBottom:3,letterSpacing:".05em"}},"INICIO (OPCIONAL)"),
+                e("input",{className:"fi",type:"date",value:f.fechaInicio||"",onChange:ev=>s("fechaInicio",ev.target.value),style:{width:"100%"}})
+              ),
+              e("div",null,
+                e("div",{style:{fontSize:9,color:"var(--text3)",marginBottom:3,letterSpacing:".05em"}},"LÍMITE (OPCIONAL)"),
+                e("input",{className:"fi",type:"date",value:f.fechaLimite||"",onChange:ev=>s("fechaLimite",ev.target.value),style:{width:"100%"}})
+              ),
+              e("div",{className:"fg",style:{margin:0}},
+                e("label",{className:"fl"},"HORA (OPCIONAL)"),
+                e("input",{className:"fi",type:"time",value:f.hora||"",onChange:ev=>s("hora",ev.target.value)})
+              ),
+              e("div",{className:"fg",style:{margin:0}},
+                e("label",{className:"fl"},"ESTADO"),
+                e("select",{className:"fi",value:f.estado,onChange:ev=>s("estado",ev.target.value)},
+                  ESTADOS.map(s2=>e("option",{key:s2,value:s2},EL[s2])))
+              )
+            )
           ),
-          e("div",{className:"fg"},e("label",{className:"fl"},"ESTADO"),e("select",{className:"fi",value:f.estado,onChange:ev=>s("estado",ev.target.value)},ESTADOS.map(s2=>e("option",{key:s2,value:s2},EL[s2])))),
+
           e("div",{className:"fg"},
             e("label",{className:"fl"},"TIPO"),
             e("div",{style:{display:"flex",gap:6}},
@@ -1993,18 +2031,21 @@ function saveAlertas(a){
   localStorage.setItem(LS_ALERTAS,JSON.stringify(a));
 }
 
+/* Devuelve la fecha principal de una tarea (prioriza fecha límite; si no existe,
+   usa la fecha de inicio). Si no hay fecha, devuelve null. */
+function fechaPrincipal(t){
+  return t?.fechaLimite || t?.fechaInicio || null;
+}
+
 /* Devuelve el color de alerta para una tarea según config.
-   Solo aplica a tareas obligatorias (excepto vencidas que siempre son rojas) */
+   Solo aplica a tareas obligatorias. Las opcionales nunca entran en alertas. */
 function getAlertColor(t, alertas){
-  if(t.estado==="completado"||!t.fechaLimite) return null;
+  if(t.estado==="completado"||!t.obligatorio||!fechaPrincipal(t)) return null;
   const today=new Date();today.setHours(0,0,0,0);
   const d=new Date(t.fechaLimite+"T00:00:00");
   const diff=Math.round((d-today)/(864e5));
-  // Vencidas siempre rojo
-  if(diff<0) return "red";
-  // Solo obligatorias para el resto
-  if(!t.obligatorio) return null;
   const a=alertas||getAlertas();
+  if(diff<0) return "red";
   if(diff<=a.rojo) return "red";
   if(diff<=a.amarillo) return "yellow";
   if(diff<=a.verde) return "green";
