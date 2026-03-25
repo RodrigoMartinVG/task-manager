@@ -2566,6 +2566,44 @@
 <body>
     <div id="root"></div>
     <script>
+
+        function procesarImportacionIncremental() {
+            const hash = window.location.hash;
+            if (!hash.startsWith('#import=')) return;
+
+            try {
+                const base64 = hash.split('#import=')[1];
+                const nuevaImportacion = JSON.parse(decodeURIComponent(escape(atob(base64))));
+                
+                // 1. Buscamos el historial actual o creamos uno vacío
+                // Usamos una key genérica para todas las importaciones
+                let historial = JSON.parse(localStorage.getItem('importaciones_uai')) || [];
+
+                // 2. Opcional: Evitar duplicar la misma materia el mismo día
+                // (Si prefieres que siempre sea nuevo, salta este paso)
+                historial = historial.filter(imp => imp.materia !== nuevaImportacion.materia);
+
+                // 3. Agregamos la nueva importación al array
+                historial.push(nuevaImportacion);
+
+                // 4. Guardamos el array completo de vuelta
+                localStorage.setItem('importaciones_uai', JSON.stringify(historial));
+
+                // 5. Limpiamos URL
+                window.location.hash = "";
+                console.log("Importación guardada en el historial incremental.");
+                
+                // Refrescar para que tu UI muestre los nuevos datos
+                if(typeof renderizarApp === "function") renderizarApp();
+
+            } catch (e) {
+                console.error("Error en importación:", e);
+            }
+        }
+
+        window.addEventListener('load', procesarImportacionIncremental);
+
+
         const { useState, useMemo, useEffect, useRef } = React;
         const e = React.createElement;
 
