@@ -806,7 +806,8 @@
             background: var(--bg1);
             border: 1px solid var(--border);
             border-radius: 9px;
-            overflow: hidden
+            overflow: visible;
+            position: relative
         }
 
         .calnav {
@@ -863,24 +864,40 @@
         .cc {
             min-height: 86px;
             padding: 5px 4px 4px;
-            border-top: 1px solid var(--border)
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-direction: column
         }
 
         .ccn {
             font-size: 11px;
             color: var(--text3);
-            display: block;
-            text-align: right;
-            margin-bottom: 3px
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            width: 100%;
+            margin-bottom: 3px;
+            align-self: flex-end
         }
 
         .ccn-today {
             color: var(--accent);
-            font-weight: 700
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            border: 1px solid color-mix(in srgb, var(--accent) 72%, transparent);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 14%, transparent);
+            margin-left: auto;
+            margin-right: 0;
+            flex-shrink: 0
         }
 
         .cc-today {
-            border-top: 1px solid var(--accent) !important
+            border-top: 1px solid var(--border) !important
         }
 
         .cchip {
@@ -921,19 +938,35 @@
             overflow: hidden;
             margin-bottom: 2px;
             border-left: 2px solid transparent;
-            transition: background .1s, transform .1s
+            position: relative;
+            box-sizing: border-box;
+            transition: background .1s, transform .1s, box-shadow .12s, filter .12s
         }
 
         .cevt:hover {
             background: var(--bg3);
-            transform: translateY(-1px)
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, .08)
+        }
+
+        .cevt-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0
+        }
+
+        .cevt-row-start,
+        .cevt-row-end {
+            justify-content: space-between
         }
 
         .cevt-main {
             display: flex;
             align-items: center;
             gap: 4px;
-            min-width: 0
+            min-width: 0;
+            flex: 1
         }
 
         .cevt-title {
@@ -941,7 +974,7 @@
             text-overflow: ellipsis;
             white-space: nowrap;
             flex: 1;
-            font-weight: 500;
+            font-weight: 600;
             color: var(--text0)
         }
 
@@ -954,13 +987,18 @@
         .cevt-link {
             font-size: 8px;
             color: var(--accent);
-            text-decoration: underline;
+            text-decoration: none;
             cursor: pointer;
             flex-shrink: 0;
-            max-width: 100%;
+            max-width: 120px;
             overflow: hidden;
             text-overflow: ellipsis;
-            white-space: nowrap
+            white-space: nowrap;
+            padding: 1px 7px;
+            border-radius: 999px;
+            border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+            background: color-mix(in srgb, var(--bg1) 84%, transparent);
+            box-shadow: 0 1px 0 rgba(255,255,255,.04) inset
         }
 
         .cevt-link:hover {
@@ -976,11 +1014,28 @@
         }
 
         .cevt-start {
-            background: var(--bg2)
+            background: var(--bg2);
+            clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%);
+            padding-right: 18px;
+            padding-left: 6px
         }
 
+        .cevt-paired {
+            box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent) inset, 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent), 0 10px 22px rgba(0, 0, 0, .10);
+            filter: saturate(1.08) brightness(1.02)
+        }
+
+        .cevt-paired.cevt-start,
+        .cevt-paired.cevt-end {
+            background: color-mix(in srgb, var(--bg1) 70%, var(--accent) 30%)
+        }
+
+
         .cevt-end {
-            background: var(--bg2)
+            background: var(--bg2);
+            clip-path: polygon(14px 0, 100% 0, 100% 100%, 14px 100%, 0 50%);
+            padding-left: 18px;
+            padding-right: 6px
         }
 
         .cevt-end-urgent {
@@ -3816,32 +3871,6 @@
                 );
             }));
         }
-        /* ─── CALENDAR DAY POPUP ── */
-
-        function CalDayPopup({ count, events, renderEvent }) {
-            const [open, setOpen] = useState(false);
-            const ref = useRef(null);
-            useClickOutside(ref, () => setOpen(false));
-            return e("div", { ref, style: { position: "relative" } },
-                e("div", {
-                    className: "cmore",
-                    style: { cursor: "pointer" },
-                    onClick: ev => { ev.stopPropagation(); setOpen(!open); }
-                }, `+${count} más`),
-                open && e("div", {
-                    style: {
-                        position: "absolute", top: "100%", left: 0, zIndex: 100,
-                        background: "var(--bg1)", border: "1px solid var(--border2)",
-                        borderRadius: 8, padding: 6, minWidth: 220, maxWidth: 300,
-                        boxShadow: "0 8px 24px rgba(0,0,0,.25)"
-                    },
-                    onClick: ev => ev.stopPropagation()
-                },
-                    events.map(ev => renderEvent(ev, true))
-                )
-            );
-        }
-
         /* ─── CALENDAR ── */
         function Cal({ tareas, mmap, tmap, isDark, month, setMonth, onSel, onMoveTask, showInicio, showFin, setShowInicio, setShowFin }) {
             const y = month.getFullYear(), m = month.getMonth();
@@ -3858,6 +3887,8 @@
             const remaining = (7 - cells.length % 7) % 7;
             const extraDays = remaining + 7;
             for (let d = 1; d <= extraDays; d++) cells.push({ day: d, month: m + 1, year: m === 11 ? y + 1 : y, outside: true });
+
+            const visibleKeys = useMemo(() => new Set(cells.map(cell => dateKey(cell.year, cell.month, cell.day))), [cells]);
 
             function dateKey(cy, cm, cd) {
                 return `${cy}-${String(cm + 1).padStart(2, '0')}-${String(cd).padStart(2, '0')}`;
@@ -3878,9 +3909,18 @@
                 return fd(k);
             }
 
+            const alertRank = { red: 5, start_overdue: 4, start_now: 3, yellow: 2, start_soon: 1, green: 0 };
+
+            function worstDayAlert(current, candidate) {
+                if (!candidate) return current;
+                if (!current) return candidate;
+                return (alertRank[candidate] > alertRank[current]) ? candidate : current;
+            }
+
             const [dragTaskId, setDragTaskId] = useState(null);
             const [dragField, setDragField] = useState(null);
             const [overCell, setOverCell] = useState(null);
+            const [hoverPair, setHoverPair] = useState(null);
 
             const eventsByDate = useMemo(() => {
                 const mp = {};
@@ -3930,11 +3970,14 @@
                     : (mat?.color || "var(--border2)");
                 const related = ev.relatedDate;
                 const relatedLabel = related ? shortDate(related) : "";
+                const relatedId = related ? `${t.id}:${ev.kind === "inicio" ? "fin" : "inicio"}` : null;
                 const isDragging = dragTaskId === ev.id;
+                const isPairedHover = hoverPair && (hoverPair.currentId === ev.id || hoverPair.relatedId === ev.id);
+                const statusIcon = { pendiente: "😴", en_progreso: "🔨", completado: "" };
 
                 return e("div", {
                     key: ev.id,
-                    className: `cevt ${ev.kind === 'fin' ? (alert ? 'cevt-end cevt-end-' + alert : 'cevt-end') : 'cevt-start'}`,
+                    className: `cevt ${ev.kind === 'fin' ? (alert ? 'cevt-end cevt-end-' + alert : 'cevt-end') : 'cevt-start'}${isPairedHover ? ' cevt-paired' : ''}`,
                     draggable: true,
                     onDragStart: dragEv => {
                         dragEv.stopPropagation();
@@ -3946,32 +3989,45 @@
                     },
                     onDragEnd: () => { setDragTaskId(null); setDragField(null); setOverCell(null); },
                     onClick: () => onSel(t.id),
+                    onMouseEnter: () => {
+                        setHoverPair({ currentId: ev.id, relatedId });
+                    },
+                    onMouseLeave: () => { setHoverPair(null); },
                     style: {
                         borderLeftColor: border,
                         background: bg,
                         opacity: isDragging ? 0.3 : (t.estado === 'completado' ? 0.42 : 1),
                         cursor: 'grab',
                         marginBottom: compact ? 4 : 2,
-                        padding: compact ? '4px 6px' : '3px 5px',
-                        fontSize: 9
+                        padding: compact ? '4px 6px' : '5px 8px',
+                        fontSize: 9,
+                        color: border
                     }
                 },
-                    e("div", { className: "cevt-main" },
-                        e("span", { className: "cevt-kind" }, tp.icon),
-                        ev.kind === "inicio"
-                            ? e("span", { className: "cevt-title" }, `${t.titulo} →`)
-                            : e("span", { className: "cevt-title" }, `← ${t.titulo}`),
-                        related && e("span", {
-                            className: "cevt-link",
-                            title: ev.kind === "inicio" ? "Ir al fin" : "Ir al inicio",
+                    e("div", { className: ev.kind === "inicio" ? "cevt-row cevt-row-start" : "cevt-row cevt-row-end" },
+                        ev.kind === "fin" && related && e("span", {
+                            className: "cevt-link cevt-link-start",
+                            title: "Ir al inicio",
                             onClick: x => { x.stopPropagation(); jumpToDate(related); }
-                        }, `(${relatedLabel})`)
+                        }, relatedLabel),
+                        e("div", { className: "cevt-main" },
+                            t.obligatorio && e("span", { className: "cevt-oblig" }, "🔴"),
+                            e("span", { className: "cevt-kind" }, tp.icon),
+                            e("span", { className: "cevt-title", style: { textDecoration: t.estado === "completado" ? "line-through" : "none" } }, t.titulo),
+                            t.estado !== "completado" && e("span", { className: "cevt-status" }, statusIcon[t.estado])
+                        ),
+                        ev.kind === "inicio" && related && e("span", {
+                            className: "cevt-link cevt-link-end",
+                            title: "Ir al fin",
+                            onClick: x => { x.stopPropagation(); jumpToDate(related); }
+                        }, relatedLabel)
                     ),
                     e("div", { className: "cevt-meta" },
                         `${mat ? mat.nombre : "Sin materia"}${t.hora ? " · " + t.hora : ""}`
                     )
                 );
             }
+
 
 
             return e("div", { className: "cal" },
@@ -3987,7 +4043,7 @@
                     e("span", null, "← fin"),
                     e("span", null, "Click en la fecha enlazada para saltar al otro evento")
                 ),
-                e("div", { className: "calgrid" },
+e("div", { className: "calgrid" },
                     DAYS.map(d => e("div", { key: `h-${d}`, className: "cdn" }, d)),
                     cells.map((cell, i) => {
                         const { day, month: cm, year: cy, outside } = cell;
@@ -3997,23 +4053,20 @@
                         const cellDate = new Date(cy, cm, day);
                         const isOver = overCell === key && dragTaskId;
                         const dayAlert = events.reduce((worst, ev) => {
-                            if (ev.kind !== "fin") return worst;
                             const c = getAlertColor(ev.task, alertas);
-                            if (c === "red") return "red";
-                            if (c === "yellow" && worst !== "red") return "yellow";
-                            if (c === "green" && !worst) return "green";
-                            return worst;
+                            return worstDayAlert(worst, c);
                         }, null);
                         return e("div", {
                             key: i,
                             className: "cc " + (isToday ? "cc-today" : ""),
                             style: {
                                 opacity: outside ? 0.45 : 1,
-                                background: isOver ? "var(--info-bg)" : dayAlert ? ALERT_COLORS[dayAlert].bg : undefined,
-                                borderTop: dayAlert ? `2px solid ${ALERT_COLORS[dayAlert].border}` : undefined,
+                                background: isOver ? "var(--info-bg)" : undefined,
                                 outline: isOver ? "2px solid var(--accent)" : undefined,
                                 borderRadius: isOver ? 6 : undefined,
-                                transition: "background .15s"
+                                transition: "background .15s",
+                                position: "relative",
+                                overflow: "hidden"
                             },
                             onDragOver: ev => { ev.preventDefault(); setOverCell(key); },
                             onDragLeave: () => setOverCell(null),
@@ -4029,8 +4082,7 @@
                                 className: "ccn " + (isToday ? "ccn-today" : ""),
                                 style: { color: outside ? "var(--text3)" : undefined }
                             }, day),
-                            events.slice(0, 3).map(ev => renderEvent(ev, false)),
-                            events.length > 3 && e(CalDayPopup, { count: events.length - 3, events: events.slice(3), renderEvent })
+                            events.map(ev => renderEvent(ev, false))
                         );
                     })
                 )
@@ -4375,8 +4427,8 @@
             red: { bg: "var(--err-bg)", text: "var(--err-text)", border: "var(--err-border)", label: "🔴" },
             yellow: { bg: "var(--warn-bg)", text: "var(--warn-text)", border: "var(--warn-border)", label: "🟡" },
             green: { bg: "var(--ok-bg)", text: "var(--ok-text)", border: "var(--ok-border)", label: "🟢" },
-            start_soon: { bg: "#e3f2fd", text: "#1976d2", border: "#90caf9", label: "🔔" },
-            start_now: { bg: "#f3e5f5", text: "#7b1fa2", border: "#ce93d8", label: "⚡" },
+            start_soon: { bg: "#dff0ff", text: "#1565c0", border: "#42a5f5", label: "🔔" },
+            start_now: { bg: "#f7e6fb", text: "#8e24aa", border: "#ba68c8", label: "⚡" },
             start_overdue: { bg: "#fce4ec", text: "#c2185b", border: "#f48fb1", label: "⚡!" },
         };
 
