@@ -534,6 +534,23 @@
             opacity: .85
         }
 
+        .importbtn {
+            background: transparent;
+            border: 1px solid var(--border2);
+            color: var(--text1);
+            padding: 5px 13px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 600
+        }
+
+        .importbtn:hover {
+            background: var(--bg2);
+            color: var(--text0)
+        }
+
         .main {
             padding: 18px 22px;
             max-width: 1400px;
@@ -2589,6 +2606,50 @@
             return isDark ? "#66666e" : "#ada59c";
         }
 
+        function cloneChecklist(items) {
+            return (items || [])
+                .filter(Boolean)
+                .map((it, i) => ({
+                    id: it.id || `ic${Date.now()}_${i}`,
+                    label: it.label || "",
+                    done: !!it.done
+                }))
+                .filter(it => it.label.trim());
+        }
+
+        function parseImportPayload(text, defaults) {
+            const raw = JSON.parse(text);
+            const payload = Array.isArray(raw) ? { tareas: raw } : raw;
+            if (!payload || !Array.isArray(payload.tareas)) {
+                throw new Error('El JSON debe tener "tareas" como array, o ser un array directo.');
+            }
+            const tasks = payload.tareas
+                .filter(t => t && typeof t === "object")
+                .map(t => {
+                    const merged = {
+                        ...defaults,
+                        ...t,
+                        titulo: String(t.titulo ?? defaults.titulo ?? "").trim(),
+                        descripcion: t.descripcion ?? defaults.descripcion ?? "",
+                        materiaId: t.materiaId ?? defaults.materiaId ?? "",
+                        tipo: t.tipo ?? defaults.tipo ?? "",
+                        fechaInicio: t.fechaInicio ?? defaults.fechaInicio ?? null,
+                        fechaLimite: t.fechaLimite ?? defaults.fechaLimite ?? null,
+                        hora: t.hora ?? defaults.hora ?? "",
+                        estado: t.estado ?? defaults.estado ?? "pendiente",
+                        obligatorio: t.obligatorio !== undefined ? t.obligatorio : defaults.obligatorio,
+                        link_vc: t.link_vc ?? defaults.link_vc ?? "",
+                        items: Array.isArray(t.items) ? t.items : (defaults.items || [])
+                    };
+                    merged.items = cloneChecklist(merged.items);
+                    merged.fechaInicio = merged.fechaInicio || null;
+                    merged.fechaLimite = merged.fechaLimite || null;
+                    return merged;
+                })
+                .filter(t => t.titulo.trim());
+            return { total: payload.tareas.length, tasks };
+        }
+
         const DEFAULT_TIPOS = [
             { id: "entregable", label: "Entregable", icon: "📦", bg: "#eae8f6", accent: "#4e47b8" },
             { id: "lectura", label: "Lectura", icon: "📖", bg: "#daeee6", accent: "#167a58" },
@@ -3824,14 +3885,28 @@
                     e("span", { style: { fontSize: 15, width: 22, textAlign: "center", flexShrink: 0, marginTop: 1 } }, tp.icon),
                     e("div", { className: "trc" },
                         m && e("span", { style: { fontSize: 9, color: "var(--text2)", fontWeight: 600, letterSpacing: ".03em", display: "block", marginBottom: 1 } }, m.nombre),
-                        e("span", { className: "trt", style: { textDecoration: t.estado === "completado" ? "line-through" : "none" } }, 
-                            t.titulo,
-                            t.link_vc && e("span", { style: { marginLeft: 8, fontSize: 12, verticalAlign: "middle" }, title: "Tiene link de videollamada" }, "📹")
+                        e("div", { style: { display: "flex", alignItems: "center", gap: 6, minWidth: 0 } },
+                            e("span", { className: "trt", style: { textDecoration: t.estado === "completado" ? "line-through" : "none" } },
+                                t.titulo,
+                                t.link_vc && e("span", { style: { marginLeft: 8, fontSize: 12, verticalAlign: "middle" }, title: "Tiene link de videollamada" }, "📹")
+                            ),
+                            t.hora && e("span", {
+                                style: {
+                                    flexShrink: 0,
+                                    fontSize: 9,
+                                    color: "var(--text2)",
+                                    background: "var(--bg2)",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: 999,
+                                    padding: "1px 6px",
+                                    whiteSpace: "nowrap"
+                                }
+                            }, t.hora)
                         ),
                         t.fechaInicio && e("div", { style: { fontSize: 9, color: "var(--text3)", marginTop: 1 } },
                             "▶ " + fd(t.fechaInicio) + (t.fechaLimite ? " → " + fd(t.fechaLimite) : "")
                         ),
-                        pct !== null && e(ProgBar, { pct, isDark, size: "sm", showFrac: `${doneCount}/${items.length}` })
+                        pct !== null && e(ProgBar, { pct, isDark, size: "sm", showPct: true, showFrac: `${doneCount}/${items.length}` })
                     ),
                     e("div", { className: "trmt" },
                         e("span", { className: "badge", style: bs }, tp.label),
@@ -3876,7 +3951,6 @@
                 dragRef.current = task.id;
                 setDragging(task.id);
                 ev.dataTransfer.effectAllowed = "move";
-                // Imagen fantasma personalizada durante el drag
                 const ghost = document.createElement("div");
                 ghost.textContent = task.titulo;
                 ghost.style.cssText = "position:fixed;top:-999px;background:var(--bg1);border:1px solid var(--accent);border-radius:8px;padding:8px 14px;font-size:12px;font-family:monospace;color:var(--text0);box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis";
@@ -3951,7 +4025,7 @@
                             const pct = calcProgress(t);
                             const items = t.items || [];
                             const doneCount = items.filter(i => i.done).length;
-                            
+
                             const alertColor = getAlertColor(t, getAlertas());
                             const isStartAlert = alertColor && alertColor.startsWith("start_");
                             const days = isStartAlert ? daysUntil(t.fechaInicio) : daysUntil(t.fechaLimite);
@@ -3977,12 +4051,45 @@
                             },
                                 e("div", { className: "kcard-body" },
                                     m && e("div", { className: "kcard-mat" }, m.nombre),
-                                    e("div", { className: "kct", style: { textDecoration: t.estado === "completado" ? "line-through" : "none" } }, 
+                                    e("div", { className: "kct", style: { textDecoration: t.estado === "completado" ? "line-through" : "none" } },
                                         t.titulo,
                                         t.link_vc && e("span", { style: { marginLeft: 6, fontSize: 11 }, title: "Videollamada" }, "📹")
                                     ),
                                     e("div", { className: "kcard-meta" },
                                         e("span", { className: "badge", style: { ...bs, fontSize: 9, padding: "1px 6px" } }, tp.icon + " " + tp.label),
+                                        t.hora && e("span", {
+                                            style: {
+                                                fontSize: 9,
+                                                color: "var(--text2)",
+                                                background: "var(--bg2)",
+                                                border: "1px solid var(--border)",
+                                                borderRadius: 3,
+                                                padding: "1px 5px",
+                                                whiteSpace: "nowrap"
+                                            }
+                                        }, t.hora),
+                                        t.fechaInicio && e("span", {
+                                            style: {
+                                                fontSize: 9,
+                                                color: "var(--text2)",
+                                                background: "var(--bg2)",
+                                                border: "1px solid var(--border)",
+                                                borderRadius: 3,
+                                                padding: "1px 5px",
+                                                whiteSpace: "nowrap"
+                                            }
+                                        }, "▶ " + fd(t.fechaInicio)),
+                                        t.fechaLimite && e("span", {
+                                            style: {
+                                                fontSize: 9,
+                                                color: "var(--text2)",
+                                                background: "var(--bg2)",
+                                                border: "1px solid var(--border)",
+                                                borderRadius: 3,
+                                                padding: "1px 5px",
+                                                whiteSpace: "nowrap"
+                                            }
+                                        }, "⏹ " + fd(t.fechaLimite)),
                                         t.obligatorio && e("span", {
                                             style: {
                                                 fontSize: 9, color: "var(--err-text)", background: "var(--err-bg)",
@@ -3991,7 +4098,7 @@
                                         }, "● Oblig."),
                                         (t.fechaLimite || isStartAlert) && e("span", {
                                             style: {
-                                                fontSize: 9, marginLeft: "auto", 
+                                                fontSize: 9, marginLeft: "auto",
                                                 color: ac2 ? ac2.text : (u || "var(--text3)"),
                                                 background: ac2 ? ac2.bg : (u ? (u + "18") : "transparent"),
                                                 border: ac2 ? `1px solid ${ac2.border}` : (u ? `1px solid ${u}44` : "none"),
@@ -4015,9 +4122,7 @@
                                             e("span", "Progreso"),
                                             e("span", `${doneCount}/${items.length}`)
                                         ),
-                                        e("div", { className: "kcpb" },
-                                            e("div", { className: "kcpbf", style: { width: pct + "%", background: progressColor(pct, isDark) } })
-                                        )
+                                        e(ProgBar, { pct, isDark, size: "sm", showPct: true })
                                     ),
                                     col.k !== "completado" && e("button", {
                                         className: "kab",
@@ -4300,9 +4405,10 @@ e("div", { className: "calgrid" },
                     ),
                     e("div", { className: "mbody" },
                         task.descripcion && e("p", { style: { color: "var(--text1)", fontSize: 13, lineHeight: 1.65, marginBottom: 14 } }, task.descripcion),
-                        e("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 } },
+                        e("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 10, marginBottom: 14 } },
                             task.fechaInicio && e("div", { className: "ibox" }, e("span", { className: "ilb" }, "FECHA INICIO"), e("span", { className: "ivl" }, fd(task.fechaInicio))),
                             task.fechaLimite && e("div", { className: "ibox" }, e("span", { className: "ilb" }, "FECHA LÍMITE"), e("span", { className: "ivl" }, fd(task.fechaLimite))),
+                            task.hora && e("div", { className: "ibox" }, e("span", { className: "ilb" }, "HORA"), e("span", { className: "ivl" }, task.hora)),
                             e("div", { className: "ibox" }, e("span", { className: "ilb" }, "TIPO"),
                                 e("span", { className: "ivl" }, task.obligatorio ? "🔴 Obligatorio" : "⚪ Opcional")),
                             e("div", { className: "ibox" }, e("span", { className: "ilb" }, "TIEMPO DEDICADO"),
@@ -4472,6 +4578,133 @@ e("div", { className: "calgrid" },
         /* ══════════════════════════════════════════════════════════════════════
            9. POMODORO Y SESIONES
            ══════════════════════════════════════════════════════════════════════ */
+        function ImportTasksModal({ materias, tipos, isDark, onImport, onClose }) {
+            const [f, setF] = useState({
+                titulo: "",
+                descripcion: "",
+                materiaId: materias[0]?.id || "",
+                tipo: tipos[0]?.id || "",
+                fechaInicio: "",
+                fechaLimite: "",
+                hora: "",
+                estado: "pendiente",
+                obligatorio: true,
+                items: [],
+                link_vc: ""
+            });
+            const [jsonText, setJsonText] = useState("");
+            const [err, setErr] = useState("");
+            function s(k, v) { setF(x => ({ ...x, [k]: v })); }
+            const defaults = useMemo(() => ({
+                titulo: f.titulo.trim(),
+                descripcion: f.descripcion,
+                materiaId: f.materiaId,
+                tipo: f.tipo,
+                fechaInicio: f.fechaInicio || null,
+                fechaLimite: f.fechaLimite || null,
+                hora: f.hora || "",
+                estado: f.estado || "pendiente",
+                obligatorio: f.obligatorio !== undefined ? f.obligatorio : true,
+                items: cloneChecklist(f.items),
+                link_vc: f.link_vc || ""
+            }), [f]);
+            const preview = useMemo(() => {
+                if (!jsonText.trim()) return { ok: true, total: 0, tasks: [], error: "" };
+                try {
+                    const parsed = parseImportPayload(jsonText, defaults);
+                    return { ok: true, ...parsed, error: "" };
+                } catch (e) {
+                    return { ok: false, total: 0, tasks: [], error: e.message };
+                }
+            }, [jsonText, defaults]);
+            function go() {
+                if (!preview.tasks.length) {
+                    setErr(preview.error || "No hay tareas válidas para importar");
+                    return;
+                }
+                onImport(preview.tasks);
+            }
+            const tp = tipos.find(t => t.id === f.tipo) || tipos[0];
+            const mat = materias.find(m => m.id === f.materiaId);
+            const bs = tp ? badgeStyle(tp.bg, tp.accent, isDark) : {};
+            const matBs = mat ? { background: mat.color + "22", color: mat.color, border: `1px solid ${mat.color}44` } : {};
+            return e("div", { className: "ov", onClick: onClose },
+                e("div", { className: "mod", style: { maxWidth: 700 }, onClick: ev => ev.stopPropagation() },
+                    e("div", { className: "mhd" },
+                        e("span", { style: { fontSize: 22 } }, "⇪"),
+                        e("div", { style: { flex: 1 } },
+                            e("span", { className: "mtit" }, "Importar tareas"),
+                            e("div", { style: { marginTop: 6, fontSize: 11, color: "var(--text3)" } }, preview.ok ? (preview.tasks.length ? `Se crearán ${preview.tasks.length} tareas` : "Pegá un JSON con tareas para ver el contador") : "JSON inválido")
+                        ),
+                        e("button", { className: "mclose", onClick: onClose }, "✕")
+                    ),
+                    e("div", { className: "mbody" },
+                        (err || !preview.ok) && e("div", { className: "ferr" }, err || preview.error),
+                        e("div", { className: "fg" },
+                            e("label", { className: "fl" }, "JSON A IMPORTAR"),
+                            e("textarea", {
+                                className: "fi",
+                                style: { minHeight: 160, fontFamily: "inherit" },
+                                value: jsonText,
+                                onChange: ev => { setJsonText(ev.target.value); if (err) setErr(""); },
+                                placeholder: `{
+  "version": 1,
+  "tareas": [
+    { "titulo": "...", "fechaLimite": "2026-04-22", "hora": "23:59" }
+  ]
+}`
+                            })
+                        ),
+                        e("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } },
+                            e("div", { className: "fg" }, e("label", { className: "fl" }, "TÍTULO BASE (OPCIONAL)"), e("input", { className: "fi", type: "text", value: f.titulo, onChange: ev => s("titulo", ev.target.value), placeholder: "Se usará si alguna tarea no trae título" })),
+                            e("div", { className: "fg" }, e("label", { className: "fl" }, "DESCRIPCIÓN BASE"), e("textarea", { className: "fi", value: f.descripcion, onChange: ev => s("descripcion", ev.target.value), placeholder: "Se usará como default si falta en el JSON" }))
+                        ),
+                        e("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } },
+                            e("div", { className: "fg" }, e("label", { className: "fl" }, "MATERIA BASE"), e("select", { className: "fi", value: f.materiaId, onChange: ev => s("materiaId", ev.target.value) }, materias.map(m => e("option", { key: m.id, value: m.id }, m.nombre + (periodoTag(m) ? " — " + periodoTag(m) : ""))))),
+                            e("div", { className: "fg" }, e("label", { className: "fl" }, "TIPO BASE"), e("select", { className: "fi", value: f.tipo, onChange: ev => s("tipo", ev.target.value) }, tipos.map(t => e("option", { key: t.id, value: t.id }, t.icon + " " + t.label))))
+                        ),
+                        e("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, alignItems: "end" } },
+                            e("div", { style: { position: "relative" } },
+                                e("div", { style: { fontSize: 9, color: "var(--text3)", marginBottom: 3, letterSpacing: ".05em" } }, "INICIO BASE (OPCIONAL)"),
+                                e("input", { className: "fi", type: "date", value: f.fechaInicio || "", onChange: ev => s("fechaInicio", ev.target.value), style: { width: "100%", paddingRight: 22 } }),
+                                f.fechaInicio && e("button", { type: "button", title: "Borrar fecha de inicio", onClick: () => s("fechaInicio", null), style: { position: "absolute", right: 4, top: 20, border: "none", background: "transparent", color: "var(--text3)", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0, width: 18, height: 18 } }, "×")
+                            ),
+                            e("div", { style: { position: "relative" } },
+                                e("div", { style: { fontSize: 9, color: "var(--text3)", marginBottom: 3, letterSpacing: ".05em" } }, "LÍMITE BASE (OPCIONAL)"),
+                                e("input", { className: "fi", type: "date", value: f.fechaLimite || "", onChange: ev => s("fechaLimite", ev.target.value), style: { width: "100%", paddingRight: 22 } }),
+                                f.fechaLimite && e("button", { type: "button", title: "Borrar fecha límite", onClick: () => s("fechaLimite", null), style: { position: "absolute", right: 4, top: 20, border: "none", background: "transparent", color: "var(--text3)", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0, width: 18, height: 18 } }, "×")
+                            ),
+                            e("div", { className: "fg", style: { margin: 0 } },
+                                e("label", { className: "fl" }, "HORA BASE"),
+                                e(TimeInputField, { value: f.hora || "", onChange: v => s("hora", v) })
+                            ),
+                            e("div", { className: "fg", style: { margin: 0 } },
+                                e("label", { className: "fl" }, "ESTADO BASE"),
+                                e("select", { className: "fi", value: f.estado, onChange: ev => s("estado", ev.target.value) }, ESTADOS.map(s2 => e("option", { key: s2, value: s2 }, EL[s2])))
+                            )
+                        ),
+                        e("div", { className: "fg" },
+                            e("label", { className: "fl" }, "TIPO DE OBLIGATORIEDAD BASE"),
+                            e("div", { style: { display: "flex", gap: 6 } },
+                                e("button", { className: "oblig-btn " + (f.obligatorio ? "oblig-btn-on" : ""), onClick: () => s("obligatorio", true) }, "🔴 Obligatorio"),
+                                e("button", { className: "oblig-btn " + (f.obligatorio === false ? "oblig-btn-off-on" : ""), onClick: () => s("obligatorio", false) }, "⚪ Opcional")
+                            )
+                        ),
+                        e(ChecklistEditor, { items: f.items, onChange: items => s("items", items) }),
+                        e("div", { className: "fg" }, e("label", { className: "fl" }, "LINK VIDEOLLAMADA BASE"), e("input", { className: "fi", type: "url", value: f.link_vc, onChange: ev => s("link_vc", ev.target.value), placeholder: "https://meet.google.com/..." })),
+                        (mat || tp) && e("div", { style: { display: "flex", gap: 7, marginBottom: 14 } },
+                            tp && e("span", { className: "badge", style: bs }, tp.icon + " " + tp.label),
+                            mat && e("span", { className: "badge", style: matBs }, mat.nombre)
+                        ),
+                        e("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end" } },
+                            e("button", { className: "cancbtn", onClick: onClose }, "Cancelar"),
+                            e("button", { className: "savebtn", onClick: go }, preview.tasks.length ? `Importar ${preview.tasks.length} tareas` : "Importar tareas")
+                        )
+                    )
+                )
+            );
+        }
+
         /* ─── POMODORO CONTEXT POPUP ── */
         function PomoContextPopup({ materia, tareas, tipos, onStart, onClose }) {
             const [sel, setSel] = useState("none");
@@ -6672,6 +6905,7 @@ e("div", { className: "calgrid" },
             // store only the task ID so sel auto-updates when data changes
             const [selId, setSelId] = useState(null);
             const [form, setForm] = useState(null);
+            const [importTasksOpen, setImportTasksOpen] = useState(false);
             const [settings, setSettings] = useState(false);
             const [fAnio, setFAnio] = useState(() => {
                 const saved = localStorage.getItem("uai-filtro-anio");
@@ -6802,6 +7036,20 @@ e("div", { className: "calgrid" },
                 if (t.id) setData(d => ({ ...d, tareas: d.tareas.map(x => x.id === t.id ? t : x) }));
                 else setData(d => ({ ...d, tareas: [...d.tareas, { ...t, id: "u" + Date.now() }] }));
                 setForm(null); if (t.id) setSelId(t.id);
+            }
+            function saveImportedTasks(tasks) {
+                if (!tasks || !tasks.length) return;
+                const stamp = Date.now();
+                const batch = tasks.map((t, i) => ({
+                    ...t,
+                    id: `u${stamp}_${i}`,
+                    fechaInicio: t.fechaInicio || null,
+                    fechaLimite: t.fechaLimite || null,
+                    items: cloneChecklist(t.items)
+                }));
+                setData(d => ({ ...d, tareas: [...d.tareas, ...batch] }));
+                setImportTasksOpen(false);
+                setForm(null);
             }
             function del(id) { setData(d => ({ ...d, tareas: d.tareas.filter(t => t.id !== id) })); setSelId(null); }
             function handleDriveConnect(fromWelcome = false) {
@@ -7102,7 +7350,10 @@ e("div", { className: "calgrid" },
                         tipos.map(t => e("option", { key: t.id, value: t.id }, t.icon + " " + t.label))
                     ),
                     e("span", { className: "cnt" }, filtered.length + " tareas"),
-                    e("button", { className: "newbtn", onClick: () => setForm({}) }, "+ Nueva tarea")
+                    e("div", { style: { display: "flex", gap: 8, marginLeft: "auto" } },
+                        e("button", { className: "newbtn", onClick: () => setForm({}) }, "+ Nueva tarea"),
+                        e("button", { className: "importbtn", onClick: () => setImportTasksOpen(true) }, "↑ Importar tareas")
+                    )
                 ),
                 e("div", { className: "main" },
                     view === "hoy" && e(HoyView, {
@@ -7151,6 +7402,13 @@ e("div", { className: "calgrid" },
                     initialTab: typeof settings === "string" ? settings : "materias",
                     franjas, franjaMode, onSaveFranjas: saveFranjas, onSaveFranjaMode: saveFranjaModeState,
                     alertas, onSaveAlertas: saveAlertasState
+                }),
+                importTasksOpen && e(ImportTasksModal, {
+                    materias: data.materias,
+                    tipos,
+                    isDark,
+                    onImport: saveImportedTasks,
+                    onClose: () => setImportTasksOpen(false)
                 }),
                 e(UnsavedToast, { dirty, driveConnected, isDemo }),
                 driveConflict && e(DriveConflictModal, {
