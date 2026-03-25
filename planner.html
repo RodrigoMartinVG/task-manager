@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-AR">
 
 <head>
     <meta charset="UTF-8" />
@@ -202,6 +202,53 @@
         select:focus {
             outline: none;
             border-color: var(--accent) !important
+        }
+
+        input[type="range"] {
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: all .15s
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3)
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: all .15s
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3)
+        }
+
+        input[type="range"]::-moz-range-track {
+            background: transparent;
+            border: none
         }
 
         .app {
@@ -2811,11 +2858,20 @@
            4. SLOTS Y FRANJAS HORARIAS
            ══════════════════════════════════════════════════════════════════════ */
         /* ─── SLOTS CONFIG ── */
-        const DEFAULT_FRANJAS = {
+        const DEFAULT_FRANJAS_3 = {
             manana: { label: "Mañana", inicio: 6, fin: 13, emoji: "🌅" },
             tarde: { label: "Tarde", inicio: 13, fin: 19, emoji: "☀️" },
-            noche: { label: "Noche", inicio: 19, fin: 24, emoji: "🌙" },
+            noche: { label: "Noche", inicio: 19, fin: 24, emoji: "🌙" }
         };
+        const DEFAULT_FRANJAS_6 = {
+            manana1: { label: "Mañana 1", inicio: 6, fin: 10, emoji: "🌅" },
+            manana2: { label: "Mañana 2", inicio: 10, fin: 13, emoji: "☀️" },
+            tarde1: { label: "Tarde 1", inicio: 13, fin: 16, emoji: "🌤" },
+            tarde2: { label: "Tarde 2", inicio: 16, fin: 19, emoji: "☀️" },
+            noche1: { label: "Noche 1", inicio: 19, fin: 22, emoji: "🌙" },
+            noche2: { label: "Noche 2", inicio: 22, fin: 24, emoji: "🌌" }
+        };
+        const DEFAULT_FRANJAS = DEFAULT_FRANJAS_3;
         const DIAS = [
             { id: "lun", label: "Lun" },
             { id: "mar", label: "Mar" },
@@ -2827,21 +2883,113 @@
         ];
         const DIA_JS_TO_ID = ["dom", "lun", "mar", "mie", "jue", "vie", "sab"];
 
+        function getFranjaMode() {
+            const mode = localStorage.getItem("uai-franjas-mode");
+            return mode === "6" ? 6 : 3;
+        }
+
+        function slotsTo6(slots) {
+            if (!slots) return [];
+            const out = [];
+            const seen = new Set();
+            for (const s of slots) {
+                const d = s.dia;
+                if (s.momento === "manana") {
+                    for (const m of ["manana1", "manana2"]) {
+                        const key = `${d}:${m}`;
+                        if (!seen.has(key)) { seen.add(key); out.push({ dia: d, momento: m }); }
+                    }
+                } else if (s.momento === "tarde") {
+                    for (const m of ["tarde1", "tarde2"]) {
+                        const key = `${d}:${m}`;
+                        if (!seen.has(key)) { seen.add(key); out.push({ dia: d, momento: m }); }
+                    }
+                } else if (s.momento === "noche") {
+                    for (const m of ["noche1", "noche2"]) {
+                        const key = `${d}:${m}`;
+                        if (!seen.has(key)) { seen.add(key); out.push({ dia: d, momento: m }); }
+                    }
+                } else {
+                    const key = `${d}:${s.momento}`;
+                    if (!seen.has(key)) { seen.add(key); out.push({ dia: d, momento: s.momento }); }
+                }
+            }
+            return out;
+        }
+
+        function slotsTo3(slots) {
+            if (!slots) return [];
+            const out = [];
+            const seen = new Set();
+            for (const s of slots) {
+                const d = s.dia;
+                let m = s.momento;
+                if (m === "manana1" || m === "manana2") m = "manana";
+                else if (m === "tarde1" || m === "tarde2") m = "tarde";
+                else if (m === "noche1" || m === "noche2") m = "noche";
+                const key = `${d}:${m}`;
+                if (!seen.has(key)) { seen.add(key); out.push({ dia: d, momento: m }); }
+            }
+            return out;
+        }
+
+        function franjasTo6(f) {
+            const la = f || getFranjas();
+            if (la.manana1) return la;
+            const m = la.manana || DEFAULT_FRANJAS_3.manana;
+            const t = la.tarde || DEFAULT_FRANJAS_3.tarde;
+            const n = la.noche || DEFAULT_FRANJAS_3.noche;
+            const mid = (a,b)=>((a + b) / 2);
+            return {
+                manana1: { label: "Mañana 1", inicio: m.inicio, fin: mid(m.inicio, m.fin), emoji: "🌅" },
+                manana2: { label: "Mañana 2", inicio: mid(m.inicio, m.fin), fin: m.fin, emoji: "☀️" },
+                tarde1: { label: "Tarde 1", inicio: t.inicio, fin: mid(t.inicio, t.fin), emoji: "🌤" },
+                tarde2: { label: "Tarde 2", inicio: mid(t.inicio, t.fin), fin: t.fin, emoji: "☀️" },
+                noche1: { label: "Noche 1", inicio: n.inicio, fin: mid(n.inicio, n.fin), emoji: "🌙" },
+                noche2: { label: "Noche 2", inicio: mid(n.inicio, n.fin), fin: n.fin, emoji: "🌌" }
+            };
+        }
+
+        function franjasTo3(f) {
+            const la = f || getFranjas();
+            if (la.manana) return la;
+            const m1 = la.manana1 || DEFAULT_FRANJAS_6.manana1;
+            const m2 = la.manana2 || DEFAULT_FRANJAS_6.manana2;
+            const t1 = la.tarde1 || DEFAULT_FRANJAS_6.tarde1;
+            const t2 = la.tarde2 || DEFAULT_FRANJAS_6.tarde2;
+            const n1 = la.noche1 || DEFAULT_FRANJAS_6.noche1;
+            const n2 = la.noche2 || DEFAULT_FRANJAS_6.noche2;
+            return {
+                manana: { label: "Mañana", inicio: m1.inicio, fin: m2.fin, emoji: "🌅" },
+                tarde: { label: "Tarde", inicio: t1.inicio, fin: t2.fin, emoji: "☀️" },
+                noche: { label: "Noche", inicio: n1.inicio, fin: n2.fin, emoji: "🌙" }
+            };
+        }
+
         function getFranjas() {
             try {
                 const s = localStorage.getItem("uai-franjas");
-                return s ? JSON.parse(s) : DEFAULT_FRANJAS;
-            } catch (e) { return DEFAULT_FRANJAS; }
+                if (s) {
+                    const parsed = JSON.parse(s);
+                    if (parsed && Object.keys(parsed).length) return parsed;
+                }
+                return getFranjaMode() === 6 ? DEFAULT_FRANJAS_6 : DEFAULT_FRANJAS_3;
+            } catch (e) { return getFranjaMode() === 6 ? DEFAULT_FRANJAS_6 : DEFAULT_FRANJAS_3; }
         }
 
-        /* Devuelve el id de la franja actual ("manana"|"tarde"|"noche") según la hora del sistema */
+        function saveFranjaMode(mode) {
+            localStorage.setItem("uai-franjas-mode", String(mode));
+        }
+
+        /* Devuelve el id de la franja actual según la hora del sistema */
         function getMomentoActual() {
             const h = new Date().getHours();
             const f = getFranjas();
             for (const [id, franja] of Object.entries(f)) {
                 if (h >= franja.inicio && h < franja.fin) return id;
             }
-            return "noche";
+            const fallback = getFranjaMode() === 6 ? "noche2" : "noche";
+            return fallback;
         }
 
         /* Devuelve el id del día actual ("lun"|"mar"|...) */
@@ -3171,7 +3319,7 @@
         }
 
         /* ─── FRANJAS EDITOR INLINE WRAPPER ── */
-        function FranjasEditorInline({ franjas, onSave }) {
+        function FranjasEditorInline({ franjas, onSave, franjaMode }) {
             const [saved, setSaved] = useState(false);
             function handleSave(v) {
                 onSave(v);
@@ -3179,7 +3327,7 @@
                 setTimeout(() => setSaved(false), 2000);
             }
             return e(React.Fragment, null,
-                e(FranjasEditor, { franjas, onSave: handleSave, inline: true }),
+                e(FranjasEditor, { franjas, franjaMode, onSave: handleSave, inline: true }),
                 saved && e("div", { style: { marginTop: 8, fontSize: 11, color: "var(--ok-text)", fontWeight: 500 } }, "✓ Guardado")
             );
         }
@@ -3188,7 +3336,7 @@
            6. CONFIGURACIÓN
            ══════════════════════════════════════════════════════════════════════ */
         /* ─── SETTINGS ── */
-        function SettingsModal({ data, setData, isDark, themeId, setThemeId, appMode, userEmail, driveConnected, onClose, onReset, handleDriveConnect, handleDriveDisconnect, initialTab, franjas, onSaveFranjas, alertas, onSaveAlertas }) {
+        function SettingsModal({ data, setData, isDark, themeId, setThemeId, appMode, userEmail, driveConnected, onClose, onReset, handleDriveConnect, handleDriveDisconnect, initialTab, franjas, onSaveFranjas, franjaMode, onSaveFranjaMode, alertas, onSaveAlertas }) {
             const [tab, setTab] = useState(initialTab || "materias");
             const [editM, setEditM] = useState(null);
             const [editT, setEditT] = useState(null);
@@ -3272,7 +3420,27 @@
                             e("div", { style: { marginBottom: 10, fontSize: 12, color: "var(--text2)" } },
                                 "Definí en qué horario empieza cada franja del día."
                             ),
-                            e(FranjasEditorInline, { franjas: franjas || getFranjas(), onSave: onSaveFranjas })
+                            e("div", { style: { marginBottom: 10, display: "flex", flexDirection: "column", gap: 6 } },
+                                e("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                                    e("span", { style: { fontSize: 12, color: "var(--text1)", fontWeight: 600 } }, "Modo de franjas:"),
+                                    e("select", {
+                                        className: "fi",
+                                        value: franjaMode || getFranjaMode(),
+                                        onChange: ev => {
+                                            const m = parseInt(ev.target.value, 10);
+                                            onSaveFranjaMode && onSaveFranjaMode(m);
+                                        },
+                                        style: { width: 320, maxWidth: "100%", minWidth: 220 }
+                                    },
+                                        e("option", { value: 3 }, "3 franjas (Mañana/Tarde/Noche)"),
+                                        e("option", { value: 6 }, "6 franjas (Mañana1/2, Tarde1/2, Noche1/2)")
+                                    )
+                                ),
+                                e("div", { style: { fontSize: 10, color: "var(--text3)", lineHeight: 1.4 } },
+                                    "Cambio automático: al pasar de 3 a 6 franja, cada franja se divide en 2 y los slots se redistribuyen. Al pasar de 6 a 3, se unen (mañana1+mañana2=mañana, etc)."
+                                )
+                            ),
+                            e(FranjasEditorInline, { franjas: franjas || getFranjas(), franjaMode: franjaMode || getFranjaMode(), onSave: onSaveFranjas })
                         ),
 
                         // Tab: Configuración de alertas de vencimiento
@@ -4200,6 +4368,7 @@ e("div", { className: "calgrid" },
                 tipo: task.tipo || (tipos[0]?.id || ""),
                 fechaInicio: task.fechaInicio ?? "",
                 fechaLimite: task.fechaLimite ?? "",
+                hora: task.hora || "",
                 estado: task.estado || "pendiente", obligatorio: task.obligatorio !== undefined ? task.obligatorio : true,
                 items: task.items || [],
                 link_vc: task.link_vc || "",
@@ -4262,7 +4431,7 @@ e("div", { className: "calgrid" },
                                     ),
                                     e("div", { className: "fg", style: { margin: 0 } },
                                         e("label", { className: "fl" }, "HORA (OPCIONAL)"),
-                                        e("input", { className: "fi", type: "time", value: f.hora || "", onChange: ev => s("hora", ev.target.value) })
+                                        e(TimeInputField, { value: f.hora || "", onChange: v => s("hora", v) })
                                     ),
                                     e("div", { className: "fg", style: { margin: 0 } },
                                         e("label", { className: "fl" }, "ESTADO"),
@@ -4872,7 +5041,7 @@ e("div", { className: "calgrid" },
                             ),
                             e("div", { className: "fg" },
                                 e("label", { className: "fl" }, "HORA DE INICIO"),
-                                e("input", { className: "fi", type: "time", value: f.hora, onChange: ev => s("hora", ev.target.value) })
+                                e(TimeInputField, { value: f.hora, onChange: v => s("hora", v) })
                             )
                         ),
                         e("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 } },
@@ -5499,6 +5668,23 @@ e("div", { className: "calgrid" },
                         : e("div", { style: { display: "flex", flexDirection: "column", gap: 4 } },
                             DIAS.map(d => {
                                 const isToday = d.id === dia;
+                                const franjaMode = Object.keys(franjasLocal).length === 6 ? 6 : 3;
+                                
+                                // Agrupar franjas por tipo si es modo 6
+                                let franjasGrouped = [];
+                                if (franjaMode === 6) {
+                                    franjasGrouped = [
+                                        { label: "Mañana", franjas: [["manana1", franjasLocal.manana1], ["manana2", franjasLocal.manana2]] },
+                                        { label: "Tarde", franjas: [["tarde1", franjasLocal.tarde1], ["tarde2", franjasLocal.tarde2]] },
+                                        { label: "Noche", franjas: [["noche1", franjasLocal.noche1], ["noche2", franjasLocal.noche2]] }
+                                    ];
+                                } else {
+                                    franjasGrouped = Object.entries(franjasLocal).map(([fid, f]) => ({
+                                        fid,
+                                        franjas: [[fid, f]]
+                                    }));
+                                }
+                                
                                 return e("div", { key: d.id },
                                     e("div", {
                                         style: {
@@ -5507,58 +5693,123 @@ e("div", { className: "calgrid" },
                                             borderLeft: isToday ? "2px solid var(--accent)" : "2px solid transparent", paddingLeft: 6
                                         }
                                     }, d.label),
-                                    e("div", { style: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 4 } },
-                                        Object.entries(franjasLocal).map(([fid, f]) => {
-                                            const isNow = d.id === dia && fid === momento;
-                                            const mats = materias.filter(m => (m.slots || []).some(s => s.dia === d.id && s.momento === fid));
-                                            const cellKeyV = d.id + "-" + fid;
-                                            const isOverV = overSlot === cellKeyV && dragSlot;
-                                            return e("div", {
-                                                key: fid,
-                                                onDragOver: ev => { ev.preventDefault(); setOverSlot(cellKeyV); },
-                                                onDragLeave: () => setOverSlot(null),
-                                                onDrop: ev => {
-                                                    ev.preventDefault();
-                                                    if (dragSlot && (dragSlot.fromDia !== d.id || dragSlot.fromFid !== fid))
-                                                        onMoveSlot && onMoveSlot(dragSlot.materiaId, dragSlot.fromDia, dragSlot.fromFid, d.id, fid);
-                                                    setDragSlot(null); setOverSlot(null);
-                                                },
-                                                style: {
-                                                    padding: 6, borderRadius: 5, position: "relative", minHeight: 50,
-                                                    background: isOverV ? "var(--info-bg)" : isNow ? "var(--info-bg)" : "var(--bg1)",
-                                                    border: isOverV ? "2px dashed var(--accent)" : isNow ? "1px solid var(--accent)" : "1px solid var(--border)",
-                                                    transition: "background .1s"
-                                                }
-                                            },
-                                                e("div", { style: { fontSize: 9, color: "var(--text3)", marginBottom: 4 } }, f.emoji + " " + f.label),
-                                                mats.map(m => e("div", {
-                                                    key: m.id,
-                                                    draggable: true,
-                                                    onDragStart: ev => {
-                                                        ev.stopPropagation();
-                                                        setDragSlot({ materiaId: m.id, fromDia: d.id, fromFid: fid });
-                                                        ev.dataTransfer.effectAllowed = "move";
+                                    franjaMode === 6 
+                                        ? e("div", { style: { display: "flex", flexDirection: "column", gap: 3 } },
+                                            [
+                                                { label: "Ciclo 1", indices: [0] },
+                                                { label: "Ciclo 2", indices: [1] }
+                                            ].map((ciclo, cicloIdx) =>
+                                                e("div", { key: cicloIdx, style: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 4 } },
+                                                    ["manana", "tarde", "noche"].map(tipo => {
+                                                        const fid = tipo + (cicloIdx + 1);
+                                                        const f = franjasLocal[fid];
+                                                        if (!f) return e("div", { key: fid });
+                                                        
+                                                        const isNow = d.id === dia && fid === momento;
+                                                        const mats = materias.filter(m => (m.slots || []).some(s => s.dia === d.id && s.momento === fid));
+                                                        const cellKeyV = d.id + "-" + fid;
+                                                        const isOverV = overSlot === cellKeyV && dragSlot;
+                                                        
+                                                        return e("div", {
+                                                            key: fid,
+                                                            onDragOver: ev => { ev.preventDefault(); setOverSlot(cellKeyV); },
+                                                            onDragLeave: () => setOverSlot(null),
+                                                            onDrop: ev => {
+                                                                ev.preventDefault();
+                                                                if (dragSlot && (dragSlot.fromDia !== d.id || dragSlot.fromFid !== fid))
+                                                                    onMoveSlot && onMoveSlot(dragSlot.materiaId, dragSlot.fromDia, dragSlot.fromFid, d.id, fid);
+                                                                setDragSlot(null); setOverSlot(null);
+                                                            },
+                                                            style: {
+                                                                padding: 6, borderRadius: 5, position: "relative", minHeight: 50,
+                                                                background: isOverV ? "var(--info-bg)" : isNow ? "var(--info-bg)" : "var(--bg1)",
+                                                                border: isOverV ? "2px dashed var(--accent)" : isNow ? "1px solid var(--accent)" : "1px solid var(--border)",
+                                                                transition: "background .1s"
+                                                            }
+                                                        },
+                                                            e("div", { style: { fontSize: 9, color: "var(--text3)", marginBottom: 4 } }, f.emoji + " " + f.label),
+                                                            mats.map(m => e("div", {
+                                                                key: m.id,
+                                                                draggable: true,
+                                                                onDragStart: ev => {
+                                                                    ev.stopPropagation();
+                                                                    setDragSlot({ materiaId: m.id, fromDia: d.id, fromFid: fid });
+                                                                    ev.dataTransfer.effectAllowed = "move";
+                                                                },
+                                                                onDragEnd: () => { setDragSlot(null); setOverSlot(null); },
+                                                                style: {
+                                                                    fontSize: 9, fontWeight: 600, padding: "2px 5px", borderRadius: 3,
+                                                                    background: m.color + "28", color: m.color, border: `1px solid ${m.color}44`,
+                                                                    marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                                                    cursor: "grab", opacity: dragSlot?.materiaId === m.id && dragSlot?.fromDia === d.id && dragSlot?.fromFid === fid ? .35 : 1
+                                                                }
+                                                            }, m.nombre)),
+                                                            e("div", {
+                                                                onClick: () => setEditSlotCell({ dia: d.id, fid }),
+                                                                style: {
+                                                                    position: "absolute", bottom: 3, right: 3, width: 14, height: 14,
+                                                                    borderRadius: 3, background: "var(--bg2)", border: "1px solid var(--border)",
+                                                                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                                                                    fontSize: 8, color: "var(--text3)", opacity: .7
+                                                                }
+                                                            }, "✎")
+                                                        );
+                                                    })
+                                                )
+                                            )
+                                        )
+                                        : e("div", { style: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 4 } },
+                                            Object.entries(franjasLocal).map(([fid, f]) => {
+                                                const isNow = d.id === dia && fid === momento;
+                                                const mats = materias.filter(m => (m.slots || []).some(s => s.dia === d.id && s.momento === fid));
+                                                const cellKeyV = d.id + "-" + fid;
+                                                const isOverV = overSlot === cellKeyV && dragSlot;
+                                                return e("div", {
+                                                    key: fid,
+                                                    onDragOver: ev => { ev.preventDefault(); setOverSlot(cellKeyV); },
+                                                    onDragLeave: () => setOverSlot(null),
+                                                    onDrop: ev => {
+                                                        ev.preventDefault();
+                                                        if (dragSlot && (dragSlot.fromDia !== d.id || dragSlot.fromFid !== fid))
+                                                            onMoveSlot && onMoveSlot(dragSlot.materiaId, dragSlot.fromDia, dragSlot.fromFid, d.id, fid);
+                                                        setDragSlot(null); setOverSlot(null);
                                                     },
-                                                    onDragEnd: () => { setDragSlot(null); setOverSlot(null); },
                                                     style: {
-                                                        fontSize: 9, fontWeight: 600, padding: "2px 5px", borderRadius: 3,
-                                                        background: m.color + "28", color: m.color, border: `1px solid ${m.color}44`,
-                                                        marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                                                        cursor: "grab", opacity: dragSlot?.materiaId === m.id && dragSlot?.fromDia === d.id && dragSlot?.fromFid === fid ? .35 : 1
+                                                        padding: 6, borderRadius: 5, position: "relative", minHeight: 50,
+                                                        background: isOverV ? "var(--info-bg)" : isNow ? "var(--info-bg)" : "var(--bg1)",
+                                                        border: isOverV ? "2px dashed var(--accent)" : isNow ? "1px solid var(--accent)" : "1px solid var(--border)",
+                                                        transition: "background .1s"
                                                     }
-                                                }, m.nombre)),
-                                                e("div", {
-                                                    onClick: () => setEditSlotCell({ dia: d.id, fid }),
-                                                    style: {
-                                                        position: "absolute", bottom: 3, right: 3, width: 14, height: 14,
-                                                        borderRadius: 3, background: "var(--bg2)", border: "1px solid var(--border)",
-                                                        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                                                        fontSize: 8, color: "var(--text3)", opacity: .7
-                                                    }
-                                                }, "✎")
-                                            );
-                                        })
-                                    )
+                                                },
+                                                    e("div", { style: { fontSize: 9, color: "var(--text3)", marginBottom: 4 } }, f.emoji + " " + f.label),
+                                                    mats.map(m => e("div", {
+                                                        key: m.id,
+                                                        draggable: true,
+                                                        onDragStart: ev => {
+                                                            ev.stopPropagation();
+                                                            setDragSlot({ materiaId: m.id, fromDia: d.id, fromFid: fid });
+                                                            ev.dataTransfer.effectAllowed = "move";
+                                                        },
+                                                        onDragEnd: () => { setDragSlot(null); setOverSlot(null); },
+                                                        style: {
+                                                            fontSize: 9, fontWeight: 600, padding: "2px 5px", borderRadius: 3,
+                                                            background: m.color + "28", color: m.color, border: `1px solid ${m.color}44`,
+                                                            marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                                            cursor: "grab", opacity: dragSlot?.materiaId === m.id && dragSlot?.fromDia === d.id && dragSlot?.fromFid === fid ? .35 : 1
+                                                        }
+                                                    }, m.nombre)),
+                                                    e("div", {
+                                                        onClick: () => setEditSlotCell({ dia: d.id, fid }),
+                                                        style: {
+                                                            position: "absolute", bottom: 3, right: 3, width: 14, height: 14,
+                                                            borderRadius: 3, background: "var(--bg2)", border: "1px solid var(--border)",
+                                                            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                                                            fontSize: 8, color: "var(--text3)", opacity: .7
+                                                        }
+                                                    }, "✎")
+                                                );
+                                            })
+                                        )
                                 );
                             })
                         )
@@ -5670,7 +5921,7 @@ e("div", { className: "calgrid" },
                         e("span", { style: { fontSize: 14 } }, (franjasLocal[momento] || {}).emoji || ""),
                         e("button", {
                             className: "sico", style: { width: 20, height: 20, fontSize: 10 },
-                            title: "Editar franjas del día", onClick: () => setEditFranjas(true)
+                            title: "Editar franjas del día", onClick: () => window.__openSettings && window.__openSettings("horarios")
                         }, "✎"),
                     ),
                     editFranjas && e(FranjasEditor, {
@@ -5808,51 +6059,181 @@ e("div", { className: "calgrid" },
             );
         }
 
-        function FranjasEditor({ franjas, onSave, onClose, inline = false }) {
-            const f = franjas || DEFAULT_FRANJAS;
-            const [h0, setH0] = useState(() => String(f.manana?.inicio ?? 6).padStart(2, '0') + ":00");
-            const [h1, setH1] = useState(() => String(f.tarde?.inicio ?? 13).padStart(2, '0') + ":00");
-            const [h2, setH2] = useState(() => String(f.noche?.inicio ?? 19).padStart(2, '0') + ":00");
-            const [h3, setH3] = useState(() => f.noche?.fin === 24 ? "00:00" : String(f.noche?.fin ?? 24).padStart(2, '0') + ":00");
+
+        function TimeInputField({ value = "00:00", onChange }) {
+            const [hour, minute] = (String(value).match(/^(\d{1,2}):(\d{1,2})$/) || ["00:00", "00", "00"]).slice(1, 3);
+            const h = String(Math.min(23, Math.max(0, parseInt(hour, 10) || 0))).padStart(2, "0");
+            const m = String(Math.min(59, Math.max(0, parseInt(minute, 10) || 0))).padStart(2, "0");
+
+            const onChangeSplit = (newH, newM) => {
+                const hh = String(Math.min(23, Math.max(0, Number(newH)))).padStart(2, "0");
+                const mm = String(Math.min(59, Math.max(0, Number(newM)))).padStart(2, "0");
+                onChange(`${hh}:${mm}`);
+            };
+
+            const hrs = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+            const mins = ["00", "15", "30", "45"];
+
+            return e("div", {
+                style: {
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    background: "var(--bg2)",
+                    padding: "2px 4px"
+                }
+            },
+                e("select", {
+                    value: h,
+                    onChange: ev => onChangeSplit(ev.target.value, m),
+                    style: {
+                        border: "none",
+                        background: "transparent",
+                        color: "var(--text0)",
+                        fontWeight: 600,
+                        outline: "none",
+                        width: 42,
+                        appearance: "none",
+                        lineHeight: "1.1"
+                    }
+                }, hrs.map(v => e("option", { key: v, value: v }, v))),
+                e("span", { style: { color: "var(--text3)", fontWeight: 700, lineHeight: "1.1" } }, ":"),
+                e("select", {
+                    value: mins.includes(m) ? m : "00",
+                    onChange: ev => onChangeSplit(h, ev.target.value),
+                    style: {
+                        border: "none",
+                        background: "transparent",
+                        color: "var(--text0)",
+                        fontWeight: 600,
+                        outline: "none",
+                        width: 42,
+                        appearance: "none",
+                        lineHeight: "1.1"
+                    }
+                }, mins.map(v => e("option", { key: v, value: v }, v)))
+            );
+        }
+
+        function FranjasEditor({ franjas, onSave, onClose, inline = false, franjaMode = 3 }) {
+            const f = franjas || (franjaMode === 6 ? DEFAULT_FRANJAS_6 : DEFAULT_FRANJAS_3);
+
+            function hToStr(value) {
+                let n = Number(value);
+                if (Number.isNaN(n) || n < 0) n = 0;
+                if (n >= 24) return "00:00";
+                const h = Math.floor(n);
+                const m = Math.round((n - h) * 60);
+                const mm = String(m).padStart(2, '0');
+                const hh = String(h).padStart(2, '0');
+                return `${hh}:${mm}`;
+            }
+
+            function toH(t) {
+                if (!t) return 0;
+                const parts = String(t).split(":");
+                if (!parts.length) return 0;
+                const hours = parseInt(parts[0], 10);
+                const minutes = parts[1] ? parseInt(parts[1].slice(0,2), 10) : 0;
+                if (Number.isNaN(hours) || Number.isNaN(minutes)) return 0;
+                return hours + (minutes / 60);
+            }
+
+            const [h0, setH0] = useState(() => hToStr(franjaMode === 6 ? f.manana1?.inicio : f.manana?.inicio ?? 6));
+            const [h1, setH1] = useState(() => hToStr(franjaMode === 6 ? f.manana1?.fin : f.tarde?.inicio ?? 13));
+            const [h2, setH2] = useState(() => hToStr(franjaMode === 6 ? f.manana2?.fin : f.noche?.inicio ?? 19));
+            const [h3, setH3] = useState(() => hToStr(franjaMode === 6 ? f.tarde1?.fin : f.noche?.fin ?? 24));
+            const [h4, setH4] = useState(() => hToStr(f.tarde2?.fin ?? 0));
+            const [h5, setH5] = useState(() => hToStr(f.noche1?.fin ?? 0));
+            const [h6, setH6] = useState(() => hToStr(franjaMode === 6 ? f.noche2?.fin : f.noche?.fin ?? 24));
             const [err, setErr] = useState("");
 
-            function toH(t) { return parseInt(t.split(":")[0]); }
+            useEffect(() => {
+                setH0(hToStr(franjaMode === 6 ? f.manana1?.inicio : f.manana?.inicio ?? 6));
+                setH1(hToStr(franjaMode === 6 ? f.manana1?.fin : f.tarde?.inicio ?? 13));
+                setH2(hToStr(franjaMode === 6 ? f.manana2?.fin : f.noche?.inicio ?? 19));
+                setH3(hToStr(franjaMode === 6 ? f.tarde1?.fin : f.noche?.fin ?? 24));
+                setH4(hToStr(f.tarde2?.fin ?? 0));
+                setH5(hToStr(f.noche1?.fin ?? 0));
+                setH6(hToStr(franjaMode === 6 ? f.noche2?.fin : f.noche?.fin ?? 24));
+            }, [franjaMode, f.manana, f.manana1, f.manana2, f.tarde, f.tarde1, f.tarde2, f.noche, f.noche1, f.noche2]);
 
-            // Live preview values
             const i0 = toH(h0), i1 = toH(h1), i2 = toH(h2);
-            const i3 = h3 === "00:00" ? 24 : toH(h3);
+            const i3 = toH(h3);
+            const i4 = franjaMode === 6 ? toH(h4) : null;
+            const i5 = franjaMode === 6 ? toH(h5) : null;
+            let i6 = toH(h6);
 
-            function fmtT(h) { return h === 24 ? "00:00" : String(h).padStart(2, '0') + ":00"; }
+            // allow next-day midnight (00:00) or roll-over for final block
+            if (i6 === 0) i6 = 24;
+            if (franjaMode === 6 && i5 !== null && i6 <= i5) i6 += 24;
+            if (franjaMode === 3 && i6 <= i2) i6 += 24;
+
+            function fmtT(h) {
+                if (h === 24) return "00:00";
+                if (h === null || h === undefined || Number.isNaN(Number(h))) return "00:00";
+                const v = Number(h);
+                const hh = Math.floor(v) % 24;
+                const mm = Math.round((v - Math.floor(v)) * 60);
+                const ss = String(mm).padStart(2, '0');
+                return `${String(hh).padStart(2, '0')}:${ss}`;
+            }
             function fmtRango(a, b) { return `${fmtT(a)} – ${fmtT(b)}`; }
 
-            const valid = i0 >= 0 && i0 < i1 && i1 < i2 && i2 <= (i3 === 0 ? 24 : i3) && (i3 === 24 || i3 > i2);
-            const errMsg = !valid ? (
-                i0 >= i1 ? "El inicio de Mañana debe ser antes del inicio de Tarde" :
-                    i1 >= i2 ? "El inicio de Tarde debe ser antes del inicio de Noche" :
-                        "El fin de Noche debe ser posterior al inicio de Noche"
-            ) : "";
+            let valid = true;
+            let errMsg = "";
+            if (franjaMode === 6) {
+                valid = i0 >= 0 && i0 < i1 && i1 < i2 && i2 < i3 && i3 < i4 && i4 < i5 && i5 < i6 && i6 <= 24;
+                if (!valid) errMsg = "Las franjas deben estar en orden y el fin de Noche 2 debe ser 24";
+            } else {
+                valid = i0 >= 0 && i0 < i1 && i1 < i2 && i2 < i6 && i6 <= 24;
+                if (!valid) errMsg = "Elige horarios válidos: Mañana < Tarde < Noche y fin de Noche = 24";
+            }
 
             function go() {
                 if (!valid) { setErr(errMsg); return; }
-                const newFranjas = {
+                const newFranjas = franjaMode === 6 ? {
+                    manana1: { label: "Mañana 1", inicio: i0, fin: i1, emoji: "🌅" },
+                    manana2: { label: "Mañana 2", inicio: i1, fin: i2, emoji: "☀️" },
+                    tarde1: { label: "Tarde 1", inicio: i2, fin: i3, emoji: "🌤" },
+                    tarde2: { label: "Tarde 2", inicio: i3, fin: i4, emoji: "☀️" },
+                    noche1: { label: "Noche 1", inicio: i4, fin: i5, emoji: "🌙" },
+                    noche2: { label: "Noche 2", inicio: i5, fin: i6, emoji: "🌌" },
+                } : {
                     manana: { label: "Mañana", inicio: i0, fin: i1, emoji: "🌅" },
                     tarde: { label: "Tarde", inicio: i1, fin: i2, emoji: "☀️" },
-                    noche: { label: "Noche", inicio: i2, fin: i3, emoji: "🌙" },
+                    noche: { label: "Noche", inicio: i2, fin: i6, emoji: "🌙" },
                 };
                 onSave(newFranjas);
                 onClose && onClose();
             }
 
-            const rows = [
+            const rows = franjaMode === 6 ? [
+                { emoji: "🌅", label: "Mañana 1", desde: { v: h0, set: setH0 }, hasta: { v: h1, set: setH1, label: "inicio de Mañana 2" } },
+                { emoji: "🌅", label: "Mañana 2", desde: { v: h1, set: setH1 }, hasta: { v: h2, set: setH2, label: "inicio de Tarde 1" } },
+                { emoji: "🌤", label: "Tarde 1", desde: { v: h2, set: setH2 }, hasta: { v: h3, set: setH3, label: "inicio de Tarde 2" } },
+                { emoji: "☀️", label: "Tarde 2", desde: { v: h3, set: setH3 }, hasta: { v: h4, set: setH4, label: "inicio de Noche 1" } },
+                { emoji: "🌙", label: "Noche 1", desde: { v: h4, set: setH4 }, hasta: { v: h5, set: setH5, label: "inicio de Noche 2" } },
+                { emoji: "🌌", label: "Noche 2", desde: { v: h5, set: setH5 }, hasta: { v: h6, set: setH6, label: "fin de Noche" } },
+            ] : [
                 { emoji: "🌅", label: "Mañana", desde: { v: h0, set: setH0 }, hasta: { v: h1, set: setH1, label: "inicio de Tarde" } },
                 { emoji: "☀️", label: "Tarde", desde: { v: h1, set: setH1 }, hasta: { v: h2, set: setH2, label: "inicio de Noche" } },
-                { emoji: "🌙", label: "Noche", desde: { v: h2, set: setH2 }, hasta: { v: h3, set: setH3, label: "fin de Noche" } },
+                { emoji: "🌙", label: "Noche", desde: { v: h2, set: setH2 }, hasta: { v: h6, set: setH6, label: "fin de Noche" } },
             ];
 
-            const preview = [
+            const preview = franjaMode === 6 ? [
+                { emoji: "🌅", label: "Mañana 1", rango: fmtRango(i0, i1) },
+                { emoji: "🌅", label: "Mañana 2", rango: fmtRango(i1, i2) },
+                { emoji: "🌤", label: "Tarde 1", rango: fmtRango(i2, i3) },
+                { emoji: "☀️", label: "Tarde 2", rango: fmtRango(i3, i4) },
+                { emoji: "🌙", label: "Noche 1", rango: fmtRango(i4, i5) },
+                { emoji: "🌌", label: "Noche 2", rango: fmtRango(i5, i6) },
+            ] : [
                 { emoji: "🌅", label: "Mañana", rango: fmtRango(i0, i1) },
                 { emoji: "☀️", label: "Tarde", rango: fmtRango(i1, i2) },
-                { emoji: "🌙", label: "Noche", rango: fmtRango(i2, i3) },
+                { emoji: "🌙", label: "Noche", rango: fmtRango(i2, i6) },
             ];
 
             const inner = e("div", { style: { display: "flex", flexDirection: "column", gap: 12 } },
@@ -5862,15 +6243,10 @@ e("div", { className: "calgrid" },
                         e("span", { style: { fontSize: 15, width: 24, textAlign: "center", flexShrink: 0 } }, r.emoji),
                         e("span", { style: { fontSize: 11, color: "var(--text0)", fontWeight: 500, width: 56, flexShrink: 0 } }, r.label),
                         e("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
-                            e("input", {
-                                className: "fi", type: "time", value: r.desde.v, style: { width: 88, padding: "4px 8px" },
-                                onChange: ev => r.desde.set(ev.target.value)
-                            }),
+                            e(TimeInputField, { value: r.desde.v, onChange: r.desde.set }),
                             e("span", { style: { fontSize: 10, color: "var(--text3)" } }, "–"),
-                            e("input", {
-                                className: "fi", type: "time", value: r.hasta.v, style: { width: 88, padding: "4px 8px" },
-                                onChange: ev => r.hasta.set(ev.target.value)
-                            })
+                            e(TimeInputField, { value: r.hasta.v, onChange: r.hasta.set })
+
                         )
                     ))
                 ),
@@ -6312,12 +6688,31 @@ e("div", { className: "calgrid" },
             const [syncStatus, setSyncStatus] = useState("idle"); // idle | saving | saved | error
             const [syncMsg, setSyncMsg] = useState("");
             const [autoSave, setAutoSave] = useState(() => localStorage.getItem("uai-autosave") === "true");
+            const [franjaMode, setFranjaMode] = useState(() => getFranjaMode());
             const [franjas, setFranjas] = useState(() => getFranjas());
             const [alertas, setAlertas] = useState(() => getAlertas());
             function saveAlertasState(a) { setAlertas(a); saveAlertas(a); }
             function saveFranjas(newFranjas) {
                 setFranjas(newFranjas);
                 localStorage.setItem("uai-franjas", JSON.stringify(newFranjas));
+            }
+            function saveFranjaModeState(mode) {
+                setFranjaMode(mode);
+                saveFranjaMode(mode);
+
+                const current = getFranjas();
+                const newFranjas = mode === 6 ? franjasTo6(current) : franjasTo3(current);
+                setFranjas(newFranjas);
+                localStorage.setItem("uai-franjas", JSON.stringify(newFranjas));
+
+                setData(d => {
+                    const materias = (d.materias || []).map(m => {
+                        const slots = m.slots || [];
+                        const newSlots = mode === 6 ? slotsTo6(slots) : slotsTo3(slots);
+                        return { ...m, slots: newSlots };
+                    });
+                    return { ...d, materias };
+                });
             }
             const [showSync, setShowSync] = useState(false);
             const [editObjetivoM, setEditObjetivoM] = useState(null);
@@ -6346,6 +6741,11 @@ e("div", { className: "calgrid" },
             useEffect(() => { localStorage.setItem("uai-last-view", view); }, [view]);
 
             useEffect(() => { setDirty(hashData(data) !== lastExp.current); }, [data]);
+            useEffect(() => {
+                if (!localStorage.getItem("uai-franjas")) {
+                    setFranjas(franjaMode === 6 ? DEFAULT_FRANJAS_6 : DEFAULT_FRANJAS_3);
+                }
+            }, [franjaMode]);
             useEffect(() => {
                 if (appMode !== "welcome" && !isDemo) saveToLS(data, userEmail);
             }, [data, appMode, userEmail, isDemo]);
@@ -6749,7 +7149,7 @@ e("div", { className: "calgrid" },
                     onReset: () => setResetModal(true),
                     handleDriveConnect, handleDriveDisconnect,
                     initialTab: typeof settings === "string" ? settings : "materias",
-                    franjas, onSaveFranjas: saveFranjas,
+                    franjas, franjaMode, onSaveFranjas: saveFranjas, onSaveFranjaMode: saveFranjaModeState,
                     alertas, onSaveAlertas: saveAlertasState
                 }),
                 e(UnsavedToast, { dirty, driveConnected, isDemo }),
