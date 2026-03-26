@@ -4962,7 +4962,7 @@ e("div", { className: "calgrid" },
            8. MODALES DE TAREAS
            ══════════════════════════════════════════════════════════════════════ */
         /* ─── TASK MODAL ── */
-        function TaskModal({ task, mat, tipo, isDark, move, toggleItem, onStartPomo, sesiones, onClose, onEdit, onDel }) {
+        function TaskModal({ task, mat, tipo, isDark, move, toggleItem, onStartPomo, sesiones, tareas, onClose, onEdit, onDel, onEditSession, onDeleteSession }) {
             const tp = tipo || { label: task.tipo, icon: "•", bg: "var(--bg2)", accent: "var(--text2)" };
             const days = daysUntil(task.fechaLimite), u = urgColor(days, task.estado, isDark);
             const [confirm, setConfirm] = useState(false);
@@ -4972,6 +4972,9 @@ e("div", { className: "calgrid" },
             const pct = calcProgress(task);
             const doneCount = items.filter(i => i.done).length;
             const progColor = pct !== null ? progressColor(pct, isDark) : null;
+            const taskSessions = (sesiones || []).filter(s => s.tareaId === task.id).sort((a, b) => new Date(b.inicio) - new Date(a.inicio));
+            const [editingSession, setEditingSession] = useState(null);
+            function fmtTaskSessionDate(iso) { const d = new Date(iso); return `${d.getDate()} ${["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"][d.getMonth()]} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; }
 
             return e("div", { className: "ov", onClick: onClose },
                 e("div", { className: "mod", style: { maxWidth: 640 }, onClick: ev => ev.stopPropagation() },
@@ -5046,6 +5049,43 @@ e("div", { className: "calgrid" },
                             )
                         ),
                         items.length === 0 && e("div", { className: "chk-empty", style: { marginBottom: 14 } }, "Sin ítems — editá la tarea para agregar una checklist"),
+
+                        e("div", { style: { marginBottom: 14 } },
+                            e("div", { className: "fl", style: { marginBottom: 8, display: "block" } }, `SESIONES ASOCIADAS (${taskSessions.length})`),
+                            taskSessions.length > 0
+                                ? e("div", { style: { display: "flex", flexDirection: "column", gap: 6 } },
+                                    taskSessions.map(s => {
+                                        const hm = Math.floor(s.minutos / 60), mm = s.minutos % 60;
+                                        const dur = hm > 0 ? (mm > 0 ? `${hm}h ${mm}m` : `${hm}h`) : `${mm}m`;
+                                        return e("button", {
+                                            key: s.id,
+                                            onClick: () => setEditingSession(s),
+                                            style: {
+                                                display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+                                                padding: "8px 11px", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 6,
+                                                cursor: "pointer", fontFamily: "inherit"
+                                            }
+                                        },
+                                            e("div", { style: { flex: 1, minWidth: 0 } },
+                                                e("div", { style: { fontSize: 11, color: "var(--text1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, s.titulo || task.titulo || "Sesión sin título"),
+                                                e("div", { style: { fontSize: 10, color: "var(--text3)", marginTop: 3 } }, fmtTaskSessionDate(s.inicio))
+                                            ),
+                                            e("span", { className: "badge", style: { background: "var(--bg0)", color: "var(--text3)" } }, s.origen === "manual" ? "Manual" : s.origen === "timer" ? "Timer" : "Sesión"),
+                                            e("span", { style: { fontSize: 11, color: "var(--ok-text)", fontWeight: 600, flexShrink: 0 } }, dur),
+                                            e("span", { style: { fontSize: 12, color: "var(--text3)", flexShrink: 0 } }, "›")
+                                        );
+                                    })
+                                )
+                                : e("div", { className: "chk-empty" }, "Todavía no hay sesiones asociadas a esta tarea"),
+                            editingSession && e(SessionEditorModal, {
+                                session: editingSession,
+                                materia: mat,
+                                tareas,
+                                onSave: onEditSession,
+                                onDelete: onDeleteSession,
+                                onClose: () => setEditingSession(null)
+                            })
+                        ),
 
                         e("div", { style: { display: "flex", gap: 7, marginBottom: 12 } },
                             ESTADOS.map(s => e("button", { key: s, className: "mab " + (task.estado === s ? "mab-a" : ""), onClick: () => { move(task.id, s); onClose(); } }, EL[s]))
@@ -5346,17 +5386,19 @@ e("div", { className: "calgrid" },
         /* ─── POMODORO CONTEXT POPUP ── */
         function PomoContextPopup({ materia, tareas, tipos, onStart, onClose }) {
             const [sel, setSel] = useState("none");
-            const [nuevaTitulo, setNuevaTitulo] = useState("");
+            const [tituloSesion, setTituloSesion] = useState("");
+            const [nuevaTareaTitulo, setNuevaTareaTitulo] = useState("");
             const tareasDeMateria = tareas.filter(t => t.materiaId === materia.id && t.estado !== "completado");
             function arrancar() {
-                if (sel === "new") {
-                    onStart("new", nuevaTitulo || `Sesión de estudio — ${materia.nombre}`);
-                } else {
-                    onStart(sel === "none" ? null : sel, null);
-                }
+                onStart({
+                    mode: sel === "new" ? "new" : (sel === "none" ? "none" : "task"),
+                    tareaId: sel !== "new" && sel !== "none" ? sel : null,
+                    sessionTitle: tituloSesion.trim(),
+                    quickTaskTitle: nuevaTareaTitulo.trim()
+                });
             }
             return e("div", { className: "ov", onClick: onClose },
-                e("div", { className: "mod", style: { maxWidth: 400 }, onClick: ev => ev.stopPropagation() },
+                e("div", { className: "mod", style: { maxWidth: 430 }, onClick: ev => ev.stopPropagation() },
                     e("div", { className: "mhd" },
                         e("div", { style: { width: 10, height: 10, borderRadius: "50%", background: materia.color, flexShrink: 0, marginTop: 2 } }),
                         e("span", { className: "mtit" }, "Nueva sesión"),
@@ -5368,32 +5410,35 @@ e("div", { className: "calgrid" },
                             e("span", { style: { fontSize: 12, color: "var(--text0)", fontWeight: 500 } }, materia.nombre),
                             e("span", { style: { fontSize: 10, color: "var(--text3)", marginLeft: "auto" } }, periodoTag(materia))
                         ),
-                        e("div", { className: "fl", style: { marginBottom: 8 } }, "¿A QUÉ ASOCIÁS ESTA SESIÓN?"),
-                        e("div", { className: "pomo-opts" },
-                            e("button", { className: "pomo-opt " + (sel === "none" ? "pomo-opt-on" : ""), onClick: () => setSel("none") },
-                                e("span", { className: "pomo-check", style: { visibility: sel === "none" ? "visible" : "hidden" } }, "✓"),
-                                "Sin tarea específica"
-                            ),
-                            tareasDeMateria.map(t =>
-                                e("button", { key: t.id, className: "pomo-opt " + (sel === t.id ? "pomo-opt-on" : ""), onClick: () => setSel(t.id) },
-                                    e("span", { className: "pomo-check", style: { visibility: sel === t.id ? "visible" : "hidden" } }, "✓"),
-                                    e("span", { style: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 } }, t.titulo),
-                                    t.obligatorio && e("span", { style: { fontSize: 10, flexShrink: 0 } }, "🔴")
-                                )
-                            ),
-                            e("button", { className: "pomo-opt pomo-opt-new", onClick: () => setSel("new") },
-                                e("span", { className: "pomo-check", style: { visibility: sel === "new" ? "visible" : "hidden" } }, "✓"),
-                                "+ Crear tarea rápida"
-                            )
-                        ),
-                        sel === "new" && e("div", { style: { marginTop: 8 } },
-                            e("label", { className: "fl", style: { marginBottom: 4, display: "block" } }, "NOMBRE DE LA TAREA (OPCIONAL)"),
+                        e("div", { className: "fg" },
+                            e("label", { className: "fl" }, "NOMBRE DE LA SESIÓN (OPCIONAL)"),
                             e("input", {
                                 className: "fi", type: "text",
-                                value: nuevaTitulo,
-                                onChange: ev => setNuevaTitulo(ev.target.value),
-                                placeholder: `Sesión de estudio — ${materia.nombre}`,
+                                value: tituloSesion,
+                                onChange: ev => setTituloSesion(ev.target.value),
+                                placeholder: "Ej. Repaso general",
                                 autoFocus: true
+                            })
+                        ),
+                        e("div", { className: "fg", style: { marginTop: 10 } },
+                            e("label", { className: "fl" }, "ASOCIACIÓN (OPCIONAL)"),
+                            e("select", {
+                                className: "fi",
+                                value: sel,
+                                onChange: ev => setSel(ev.target.value)
+                            },
+                                e("option", { value: "none" }, "Sin tarea específica"),
+                                tareasDeMateria.map(t => e("option", { key: t.id, value: t.id }, t.titulo)),
+                                e("option", { value: "new" }, "+ Crear tarea rápida")
+                            )
+                        ),
+                        sel === "new" && e("div", { className: "fg" },
+                            e("label", { className: "fl" }, "NOMBRE DE LA TAREA RÁPIDA (OPCIONAL)"),
+                            e("input", {
+                                className: "fi", type: "text",
+                                value: nuevaTareaTitulo,
+                                onChange: ev => setNuevaTareaTitulo(ev.target.value),
+                                placeholder: "Ej. Lectura guiada"
                             })
                         ),
                         e("div", { style: { display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 } },
@@ -5818,46 +5863,54 @@ e("div", { className: "calgrid" },
         /* ─── MANUAL SESSION MODAL ── */
         function ManualSessionModal({ materia, tareas, onSave, onClose }) {
             const [f, setF] = useState({
-                tareaId: "none",
-                nombreLibre: "",
+                asociacion: "none",
+                sessionTitle: "",
+                quickTaskTitle: "",
                 horas: 1, minutos: 0,
                 fecha: localDate(),
                 hora: localTime()
             });
             const [err, setErr] = useState("");
-            function s(k, v) { setF(x => ({ ...x, [k]: v })); }
+            function s(k, v) { setErr(""); setF(x => ({ ...x, [k]: v })); }
             function go() {
-                const totalMins = parseInt(f.horas || 0) * 60 + parseInt(f.minutos || 0);
+                const hh = parseInt(f.horas || 0, 10) || 0;
+                const mm = parseInt(f.minutos || 0, 10) || 0;
+                if (hh < 0) { setErr("Las horas no pueden ser negativas"); return; }
+                if (mm < 0 || mm > 59) { setErr("Los minutos deben estar entre 0 y 59"); return; }
+                const totalMins = hh * 60 + mm;
                 if (!totalMins) { setErr("El tiempo debe ser mayor a 0"); return; }
+                if (!f.fecha || !f.hora) { setErr("La fecha y la hora son obligatorias"); return; }
                 const inicio = f.fecha + "T" + f.hora + ":00";
-                let tareaId = f.tareaId === "none" ? null : f.tareaId;
-                // Si eligió "sin tarea" pero escribió un nombre, crear tarea rápida
-                if (f.tareaId === "none" && f.nombreLibre.trim()) {
+                const baseSession = {
+                    id: "m" + Date.now(),
+                    materiaId: materia.id,
+                    tareaId: f.asociacion === "none" || f.asociacion === "new" ? null : f.asociacion,
+                    inicio,
+                    minutos: totalMins,
+                    origen: "manual",
+                    titulo: (f.sessionTitle || "").trim()
+                };
+                if (f.asociacion === "new") {
                     const qt = {
                         id: "qt" + Date.now(),
-                        titulo: f.nombreLibre.trim(),
+                        titulo: (f.quickTaskTitle || "").trim() || "Nueva tarea rápida",
                         descripcion: "Tarea creada desde carga de horas manual.",
                         materiaId: materia.id,
-                        tipo: (tareas[0]?.tipo) || "entregable",
+                        tipo: (tareas.find(t => t.materiaId === materia.id)?.tipo) || (tareas[0]?.tipo) || "entregable",
                         fechaLimite: f.fecha,
                         estado: "en_progreso",
                         obligatorio: false,
                         items: [],
                     };
-                    onSave({
-                        id: "m" + Date.now(),
-                        materiaId: materia.id,
-                        tareaId: qt.id,
-                        inicio,
-                        minutos: totalMins
-                    }, qt);
+                    baseSession.tareaId = qt.id;
+                    onSave(baseSession, qt);
                     return;
                 }
-                onSave({ id: "m" + Date.now(), materiaId: materia.id, tareaId, inicio, minutos: totalMins }, null);
+                onSave(baseSession, null);
             }
             const tareasM = tareas.filter(t => t.materiaId === materia.id && t.estado !== "completado");
             return e("div", { className: "ov", onClick: onClose },
-                e("div", { className: "mod", style: { maxWidth: 400 }, onClick: ev => ev.stopPropagation() },
+                e("div", { className: "mod", style: { maxWidth: 430 }, onClick: ev => ev.stopPropagation() },
                     e("div", { className: "mhd" },
                         e("span", { style: { fontSize: 18 } }, "✎"),
                         e("span", { className: "mtit" }, "Cargar horas"),
@@ -5874,19 +5927,29 @@ e("div", { className: "calgrid" },
                         ),
                         err && e("div", { className: "ferr" }, err),
                         e("div", { className: "fg" },
-                            e("label", { className: "fl" }, "TAREA (OPCIONAL)"),
-                            e("select", { className: "fi", value: f.tareaId, onChange: ev => s("tareaId", ev.target.value) },
-                                e("option", { value: "none" }, "Sin tarea específica"),
-                                tareasM.map(t => e("option", { key: t.id, value: t.id }, t.titulo))
-                            )
-                        ),
-                        f.tareaId === "none" && e("div", { className: "fg" },
                             e("label", { className: "fl" }, "NOMBRE DE LA SESIÓN (OPCIONAL)"),
                             e("input", {
                                 className: "fi", type: "text",
-                                value: f.nombreLibre,
-                                onChange: ev => s("nombreLibre", ev.target.value),
-                                placeholder: `Sesión de estudio — ${materia.nombre}`
+                                value: f.sessionTitle,
+                                onChange: ev => s("sessionTitle", ev.target.value),
+                                placeholder: "Ej. Repaso general"
+                            })
+                        ),
+                        e("div", { className: "fg" },
+                            e("label", { className: "fl" }, "ASOCIACIÓN (OPCIONAL)"),
+                            e("select", { className: "fi", value: f.asociacion, onChange: ev => s("asociacion", ev.target.value) },
+                                e("option", { value: "none" }, "Sin tarea específica"),
+                                tareasM.map(t => e("option", { key: t.id, value: t.id }, t.titulo)),
+                                e("option", { value: "new" }, "+ Crear tarea rápida")
+                            )
+                        ),
+                        f.asociacion === "new" && e("div", { className: "fg" },
+                            e("label", { className: "fl" }, "NOMBRE DE LA TAREA RÁPIDA (OPCIONAL)"),
+                            e("input", {
+                                className: "fi", type: "text",
+                                value: f.quickTaskTitle,
+                                onChange: ev => s("quickTaskTitle", ev.target.value),
+                                placeholder: "Ej. Lectura guiada"
                             })
                         ),
                         e("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } },
@@ -5928,7 +5991,121 @@ e("div", { className: "calgrid" },
            10. VISTAS DE MATERIAS
            ══════════════════════════════════════════════════════════════════════ */
         /* ─── MATERIAS VIEW ── */
-        function MateriasView({ materias, sesiones, tareas, tmap, isDark, onStartPomo, onEditMateria, onManualSession }) {
+
+        function SessionEditorModal({ session, materia, tareas, onSave, onDelete, onClose }) {
+            const tareasM = (tareas || []).filter(t => t.materiaId === materia.id);
+            const dt = new Date(session.inicio);
+            const initFecha = isNaN(dt) ? localDate() : `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+            const initHora = isNaN(dt) ? localTime() : `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+            const [f, setF] = useState({
+                fecha: initFecha,
+                hora: initHora,
+                horas: Math.floor((session.minutos || 0) / 60),
+                minutos: (session.minutos || 0) % 60,
+                tareaId: session.tareaId || "none",
+                titulo: session.titulo || "",
+            });
+            const [confirm, setConfirm] = useState(false);
+            const [err, setErr] = useState("");
+            function s(k, v) {
+                setErr("");
+                setF(x => ({ ...x, [k]: v }));
+            }
+            function go(ev) {
+                if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+                const hh = Number.parseInt(f.horas || 0, 10) || 0;
+                const mmRaw = Number.parseInt(f.minutos || 0, 10) || 0;
+                if (!f.fecha || !f.hora) { setErr("La fecha y la hora son obligatorias"); return; }
+                if (hh < 0) { setErr("Las horas no pueden ser negativas"); return; }
+                if (mmRaw < 0 || mmRaw > 59) { setErr("Los minutos deben estar entre 0 y 59"); return; }
+                const totalMins = hh * 60 + mmRaw;
+                if (!totalMins) { setErr("El tiempo debe ser mayor a 0"); return; }
+                onSave(session.id, {
+                    inicio: f.fecha + "T" + f.hora + ":00",
+                    minutos: totalMins,
+                    titulo: (f.titulo || "").trim(),
+                    tareaId: f.tareaId === "none" ? null : f.tareaId,
+                });
+                onClose();
+            }
+            function confirmDelete(ev) {
+                if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+                onDelete(session.id);
+                onClose();
+            }
+            return e("div", { className: "ov", onClick: onClose },
+                e("div", { className: "mod", style: { maxWidth: 430 }, onClick: ev => ev.stopPropagation() },
+                    e("div", { className: "mhd" },
+                        e("span", { style: { fontSize: 18 } }, "⏱"),
+                        e("span", { className: "mtit" }, "Editar sesión"),
+                        e("button", { className: "mclose", onClick: onClose }, "✕")
+                    ),
+                    e("div", { className: "mbody" },
+                        err && e("div", { style: { fontSize: 11, color: "var(--err-text)", marginBottom: 8 } }, err),
+                        e("div", { className: "fg" },
+                            e("label", { className: "fl" }, "NOMBRE DE LA SESIÓN"),
+                            e("input", {
+                                className: "fi",
+                                type: "text",
+                                value: f.titulo,
+                                onChange: ev => s("titulo", ev.target.value),
+                                placeholder: "Ej. Repaso general / Lectura Cap. 4"
+                            })
+                        ),
+                        e("div", { className: "fg" },
+                            e("label", { className: "fl" }, "MATERIA"),
+                            e("div", { className: "fi", style: { display: "flex", alignItems: "center", minHeight: 34, color: "var(--text1)", background: "var(--bg2)" } }, materia.nombre)
+                        ),
+                        e("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } },
+                            e("div", { className: "fg" },
+                                e("label", { className: "fl" }, "FECHA"),
+                                e("input", { className: "fi", type: "date", value: f.fecha, onChange: ev => s("fecha", ev.target.value) })
+                            ),
+                            e("div", { className: "fg" },
+                                e("label", { className: "fl" }, "HORA"),
+                                e("input", { className: "fi", type: "time", value: f.hora, onChange: ev => s("hora", ev.target.value) })
+                            )
+                        ),
+                        e("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } },
+                            e("div", { className: "fg" },
+                                e("label", { className: "fl" }, "HORAS"),
+                                e("input", { className: "fi", type: "number", min: 0, step: 1, value: f.horas, onChange: ev => s("horas", ev.target.value) })
+                            ),
+                            e("div", { className: "fg" },
+                                e("label", { className: "fl" }, "MINUTOS"),
+                                e("input", { className: "fi", type: "number", min: 0, max: 59, step: 5, value: f.minutos, onChange: ev => s("minutos", ev.target.value) })
+                            )
+                        ),
+                        e("div", { className: "fg" },
+                            e("label", { className: "fl" }, "TAREA ASOCIADA"),
+                            e("select", { className: "fi", value: f.tareaId, onChange: ev => s("tareaId", ev.target.value) },
+                                e("option", { value: "none" }, "Sin tarea"),
+                                tareasM.map(t => e("option", { key: t.id, value: t.id }, t.titulo))
+                            )
+                        ),
+                        e("div", { style: { display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center", marginTop: 12, flexWrap: "wrap" } },
+                            e("div", { style: { fontSize: 11, color: confirm ? "var(--err-text)" : "var(--text3)" } },
+                                confirm
+                                    ? "¿Seguro que querés eliminar esta sesión?"
+                                    : (session.origen === "manual" ? "Carga manual" : session.origen === "timer" ? "Sesión iniciada por temporizador" : "Sesión registrada")
+                            ),
+                            e("div", { style: { display: "flex", gap: 8, marginLeft: "auto", flexWrap: "wrap", justifyContent: "flex-end" } },
+                                !confirm
+                                    ? e("button", { className: "delbtn", style: { width: "auto", padding: "7px 12px", marginTop: 0 }, onClick: ev => { ev.preventDefault(); ev.stopPropagation(); setConfirm(true); } }, "Eliminar")
+                                    : e(React.Fragment, null,
+                                        e("button", { className: "cancbtn", onClick: ev => { ev.preventDefault(); ev.stopPropagation(); setConfirm(false); } }, "Cancelar"),
+                                        e("button", { className: "delbtn", style: { width: "auto", padding: "7px 12px", marginTop: 0 }, onClick: confirmDelete }, "Sí, eliminar")
+                                    ),
+                                !confirm && e("button", { className: "cancbtn", onClick: ev => { ev.preventDefault(); ev.stopPropagation(); onClose(); } }, "Cerrar"),
+                                !confirm && e("button", { className: "savebtn", onClick: go }, "Guardar")
+                            )
+                        )
+                    )
+                )
+            );
+        }
+
+        function MateriasView({ materias, sesiones, tareas, tmap, isDark, onStartPomo, onEditMateria, onManualSession, onEditSession, onDeleteSession }) {
             const [selId, setSelId] = useState(null);
             const sel = materias.find(m => m.id === selId) || null;
             function toggleSel(id) { setSelId(prev => prev === id ? null : id); }
@@ -6087,6 +6264,8 @@ e("div", { className: "calgrid" },
                                 onStartPomo,
                                 onEditMateria,
                                 onManualSession,
+                                onEditSession,
+                                onDeleteSession,
                                 onClose: () => setSelId(null)
                             })
                         )
@@ -6095,7 +6274,7 @@ e("div", { className: "calgrid" },
             );
         }
         /* ─── MATERIAS DETAIL ── */
-        function MateriasDetail({ m, sesiones, tareas, isDark, onStartPomo, onEditMateria, onManualSession, onClose }) {
+        function MateriasDetail({ m, sesiones, tareas, isDark, onStartPomo, onEditMateria, onManualSession, onEditSession, onDeleteSession, onClose }) {
             const PERIODOS_VIS = [
                 { id: "semana", label: "Esta semana", semanas: 1 },
                 { id: "2sem", label: "2 semanas", semanas: 2 },
@@ -6108,6 +6287,8 @@ e("div", { className: "calgrid" },
             });
             const [hasta, setHasta] = useState(new Date().toISOString().slice(0, 10));
             const [editingHoras, setEditingHoras] = useState(false);
+            const [sessionFilter, setSessionFilter] = useState("all");
+            const [editingSession, setEditingSession] = useState(null);
 
             function getMondayBefore(dateStr) {
                 const d = new Date(dateStr + "T00:00:00");
@@ -6129,6 +6310,9 @@ e("div", { className: "calgrid" },
                 const r = getRange();
                 return { range: r, sesInRange: sesiones.filter(s => { const d = new Date(s.inicio); return d >= r.start && d <= r.end; }) };
             }, [sesiones, pv, desde, hasta]);
+            const sesionesSinTarea = useMemo(() => sesInRange.filter(s => !s.tareaId), [sesInRange]);
+            const sesionesConTarea = useMemo(() => sesInRange.filter(s => !!s.tareaId), [sesInRange]);
+            const sesionesFiltradas = useMemo(() => sesInRange.filter(s => sessionFilter === "all" ? true : sessionFilter === "linked" ? !!s.tareaId : !s.tareaId), [sesInRange, sessionFilter]);
 
             const totalMins = sesInRange.reduce((a, s) => a + s.minutos, 0);
             const totalHs = parseFloat((totalMins / 60).toFixed(1));
@@ -6281,39 +6465,72 @@ e("div", { className: "calgrid" },
                     ),
 
                     // Tasks summary
-                    tarPend.length > 0 && e("div", { style: { display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" } },
-                        obligs > 0 && e("span", { className: "badge", style: { background: "var(--err-bg)", color: "var(--err-text)" } }, `🔴 ${obligs} obligatoria${obligs > 1 ? "s" : ""}`),
-                        e("span", { className: "badge", style: { background: "var(--bg2)", color: "var(--text2)" } }, `${tarPend.length} tarea${tarPend.length > 1 ? "s" : ""} pendiente${tarPend.length > 1 ? "s" : ""}`)
+                    e("div", { style: { display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" } },
+                        tarPend.length > 0 && obligs > 0 && e("span", { className: "badge", style: { background: "var(--err-bg)", color: "var(--err-text)" } }, `🔴 ${obligs} obligatoria${obligs > 1 ? "s" : ""}`),
+                        tarPend.length > 0 && e("span", { className: "badge", style: { background: "var(--bg2)", color: "var(--text2)" } }, `${tarPend.length} tarea${tarPend.length > 1 ? "s" : ""} pendiente${tarPend.length > 1 ? "s" : ""}`),
+                        e("span", { className: "badge", style: { background: "var(--bg2)", color: "var(--text2)" } }, `${sesInRange.length} sesión${sesInRange.length !== 1 ? "es" : ""} en el período`),
+                        sesionesSinTarea.length > 0 && e("span", { className: "badge", style: { background: "var(--warn-bg)", color: "var(--warn-text)" } }, `${sesionesSinTarea.length} sin tarea`)
                     ),
 
                     // Sessions history
-                    sesInRange.length > 0 && e("div", null,
-                        e("div", { className: "fl", style: { marginBottom: 8, display: "block" } }, `SESIONES EN EL PERÍODO (${sesInRange.length})`),
-                        e("div", { style: { display: "flex", flexDirection: "column", gap: 5 } },
-                            [...sesInRange].sort((a, b) => new Date(b.inicio) - new Date(a.inicio)).map(s => {
+                    e("div", null,
+                        e("div", { style: { display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", marginBottom: 8, flexWrap: "wrap" } },
+                            e("div", { className: "fl", style: { display: "block" } }, `SESIONES EN EL PERÍODO (${sesInRange.length})`),
+                            e("div", { style: { display: "flex", gap: 4, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 6, padding: 3, flexWrap: "wrap" } },
+                                [["all","Todas"],["linked","Con tarea"],["unlinked","Sin tarea"]].map(([id,label]) => e("button", {
+                                    key: id,
+                                    style: {
+                                        background: sessionFilter === id ? "var(--bg1)" : "transparent", border: "none",
+                                        color: sessionFilter === id ? "var(--text0)" : "var(--text2)", padding: "4px 10px", borderRadius: 4,
+                                        cursor: "pointer", fontFamily: "inherit", fontSize: 11
+                                    },
+                                    onClick: () => setSessionFilter(id)
+                                }, label))
+                            )
+                        ),
+                        sesionesFiltradas.length > 0 && e("div", { style: { display: "flex", flexDirection: "column", gap: 6 } },
+                            [...sesionesFiltradas].sort((a, b) => new Date(b.inicio) - new Date(a.inicio)).map(s => {
                                 const tar = tareas.find(t => t.id === s.tareaId);
                                 const hm = Math.floor(s.minutos / 60), mm = s.minutos % 60;
                                 const dur = hm > 0 ? (mm > 0 ? `${hm}h ${mm}m` : `${hm}h`) : `${mm}m`;
-                                return e("div", {
-                                    key: s.id, style: {
-                                        display: "flex", alignItems: "center", gap: 10,
-                                        padding: "7px 11px", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 6
+                                return e("button", {
+                                    key: s.id,
+                                    onClick: () => setEditingSession(s),
+                                    style: {
+                                        display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+                                        padding: "8px 11px", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 6,
+                                        cursor: "pointer", fontFamily: "inherit"
                                     }
                                 },
-                                    e("span", { style: { flex: 1, fontSize: 11, color: "var(--text1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
-                                        tar ? tar.titulo : "Sin tarea específica"),
+                                    e("div", { style: { flex: 1, minWidth: 0 } },
+                                        e("div", { style: { fontSize: 11, color: "var(--text1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+                                            s.titulo ? s.titulo : (tar ? tar.titulo : "Sesión sin título")),
+                                        e("div", { style: { display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 } },
+                                            e("span", { className: "badge", style: { background: tar ? "var(--bg1)" : "var(--bg0)", color: tar ? "var(--text1)" : "var(--text3)" } }, tar ? ("Tarea: " + tar.titulo) : "Sin tarea"),
+                                            e("span", { className: "badge", style: { background: "var(--bg0)", color: "var(--text3)" } }, s.origen === "manual" ? "Manual" : s.origen === "timer" ? "Timer" : "Sesión")
+                                        )
+                                    ),
                                     e("span", { style: { fontSize: 11, color: "var(--ok-text)", fontWeight: 600, flexShrink: 0 } }, dur),
-                                    e("span", { style: { fontSize: 10, color: "var(--text3)", flexShrink: 0, marginLeft: 4 } }, fmtDate(s.inicio))
+                                    e("span", { style: { fontSize: 10, color: "var(--text3)", flexShrink: 0, marginLeft: 4 } }, fmtDate(s.inicio)),
+                                    e("span", { style: { fontSize: 12, color: "var(--text3)", flexShrink: 0 } }, "›")
                                 );
                             })
-                        )
-                    ),
-                    sesInRange.length === 0 && e("div", {
-                        style: {
-                            fontSize: 12, color: "var(--text3)", textAlign: "center",
-                            padding: "20px", background: "var(--bg2)", borderRadius: 6
-                        }
-                    }, "Sin sesiones en este período")
+                        ),
+                        sesionesFiltradas.length === 0 && e("div", {
+                            style: {
+                                fontSize: 12, color: "var(--text3)", textAlign: "center",
+                                padding: "20px", background: "var(--bg2)", borderRadius: 6
+                            }
+                        }, sessionFilter === "all" ? "Sin sesiones en este período" : sessionFilter === "linked" ? "No hay sesiones asociadas a tareas en este período" : "No hay sesiones sin tarea en este período"),
+                        editingSession && e(SessionEditorModal, {
+                            session: editingSession,
+                            materia: m,
+                            tareas,
+                            onSave: onEditSession,
+                            onDelete: onDeleteSession,
+                            onClose: () => setEditingSession(null)
+                        })
+                    )
                 ) // end padding wrapper
             );
         }
@@ -7875,6 +8092,12 @@ e("div", { className: "calgrid" },
                 }));
                 setManualSession(null);
             }
+            function editSession(sessionId, patch) {
+                setData(d => ({ ...d, sesiones: (d.sesiones || []).map(s => s.id === sessionId ? { ...s, ...patch } : s) }));
+            }
+            function deleteSession(sessionId) {
+                setData(d => ({ ...d, sesiones: (d.sesiones || []).filter(s => s.id !== sessionId) }));
+            }
             function enterLocal() {
                 localStorage.setItem(LS_MODE_KEY, "local");
                 setAppMode("local");
@@ -7896,12 +8119,12 @@ e("div", { className: "calgrid" },
             function startPomoFromMateria(materia) {
                 setPomoContext(materia);
             }
-            function handlePomoContextStart(tareaId, nuevaTituloTask) {
-                if (tareaId === "new") {
-                    // Create quick task automatically
+            function handlePomoContextStart(payload) {
+                const { mode, tareaId, sessionTitle, quickTaskTitle } = payload || {};
+                if (mode === "new") {
                     const quickTask = {
                         id: "qt" + Date.now(),
-                        titulo: nuevaTituloTask || `Sesión de estudio — ${pomoContext.nombre}`,
+                        titulo: quickTaskTitle || "Nueva tarea rápida",
                         descripcion: "Tarea creada automáticamente desde sesión de estudio.",
                         materiaId: pomoContext.id,
                         tipo: (data.tipos || DEFAULT_TIPOS)[0]?.id || "entregable",
@@ -7911,10 +8134,14 @@ e("div", { className: "calgrid" },
                         items: [],
                     };
                     setData(d => ({ ...d, tareas: [...d.tareas, quickTask] }));
-                    setPomoSession({ materiaId: pomoContext.id, tareaId: quickTask.id });
+                    setPomoSession({ materiaId: pomoContext.id, tareaId: quickTask.id, titulo: (sessionTitle || "").trim() });
                     setPomoContext(null);
                 } else {
-                    setPomoSession({ materiaId: pomoContext.id, tareaId: tareaId });
+                    setPomoSession({
+                        materiaId: pomoContext.id,
+                        tareaId: mode === "none" ? null : tareaId,
+                        titulo: (sessionTitle || "").trim()
+                    });
                     setPomoContext(null);
                 }
             }
@@ -7924,7 +8151,7 @@ e("div", { className: "calgrid" },
                 const localISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`;
                 const ses = {
                     id: "s" + Date.now(), materiaId: pomoSession.materiaId, tareaId: pomoSession.tareaId,
-                    inicio: localISO, minutos
+                    inicio: localISO, minutos, origen: "timer", titulo: (pomoSession.titulo || "").trim()
                 };
                 setData(d => ({ ...d, sesiones: [...(d.sesiones || []), ses] }));
                 setPomoSession(null);
@@ -8128,11 +8355,14 @@ e("div", { className: "calgrid" },
                     view === "backlog" && e(Backlog, { tareas: filtered, mmap, tmap, isDark, move, onSel: id => setSelId(id) }),
                     view === "kanban" && e(Kanban, { tareas: filtered, mmap, tmap, isDark, move, onSel: id => setSelId(id) }),
                     view === "calendar" && e(Cal, { tareas: filtered, mmap, tmap, isDark, month: calM, setMonth: setCalM, onSel: id => setSelId(id), onMoveTask: moveTaskToDate, showInicio: calShowInicio, showFin: calShowFin, setShowInicio: setCalShowInicio, setShowFin: setCalShowFin }),
-                    view === "materias" && e(MateriasView, { materias: materiasFiltradas, sesiones: data.sesiones || [], tareas: data.tareas, tmap, isDark, onStartPomo: startPomoFromMateria, onEditMateria: editMateriaHoras, onManualSession: setManualSession })
+                    view === "materias" && e(MateriasView, { materias: materiasFiltradas, sesiones: data.sesiones || [], tareas: data.tareas, tmap, isDark, onStartPomo: startPomoFromMateria, onEditMateria: editMateriaHoras, onManualSession: setManualSession, onEditSession: editSession, onDeleteSession: deleteSession })
                 ),
                 sel && e(TaskModal, {
                     task: sel, mat: mmap[sel.materiaId], tipo: tmap[sel.tipo], isDark, move, toggleItem, onStartPomo: startPomoFromTask, sesiones: data.sesiones || [],
-                    onClose: () => setSelId(null), onEdit: () => { setForm(sel); setSelId(null); }, onDel: del
+                    tareas: data.tareas,
+                    onClose: () => setSelId(null), onEdit: () => { setForm(sel); setSelId(null); }, onDel: del,
+                    onEditSession: editSession,
+                    onDeleteSession: deleteSession
                 }),
                 form !== null && e(FormModal, { task: form, materias: data.materias, tipos, isDark, onSave: saveTask, onClose: () => setForm(null) }),
                 settings && e(SettingsModal, {
