@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="es-AR">
 
+<html lang="es-AR">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>◈ UAI Planner</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1.0" name="viewport"/>
+<title>◈ UAI Planner</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script async="" defer="" src="https://accounts.google.com/gsi/client"></script>
+<style>
         [data-theme="hueso"] {
             --bg0: #f0ece3;
             --bg1: #e8e3d8;
@@ -175,6 +175,774 @@
         ::-webkit-scrollbar-thumb {
             background: var(--border2);
             border-radius: 3px
+        }
+
+
+        /* ══ ONBOARDING REDESIGN ══ */
+        @keyframes ob-fade-up {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes ob-fade-in {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        @keyframes ob-logo-pulse {
+            0%, 100% { text-shadow: 0 0 0 transparent; }
+            50% { text-shadow: 0 0 24px color-mix(in srgb, var(--accent) 40%, transparent); }
+        }
+        @keyframes ob-dot-bounce {
+            0%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-5px); }
+        }
+        .ob-screen {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg0);
+            padding: 32px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .ob-screen::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.28;
+            pointer-events: none;
+        }
+        .ob-screen::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 70% 60% at 50% 30%, transparent 30%, var(--bg0) 100%);
+            pointer-events: none;
+        }
+        .ob-inner {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 520px;
+        }
+        .ob-hero {
+            text-align: center;
+            margin-bottom: 36px;
+            animation: ob-fade-up .5s ease both;
+        }
+        .ob-logo-mark {
+            font-size: 44px;
+            line-height: 1;
+            color: var(--accent);
+            animation: ob-logo-pulse 3s ease-in-out infinite;
+            display: block;
+            margin-bottom: 12px;
+        }
+        .ob-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text0);
+            letter-spacing: .06em;
+            margin-bottom: 6px;
+        }
+        .ob-subtitle {
+            font-size: 12px;
+            color: var(--text3);
+            letter-spacing: .08em;
+            text-transform: uppercase;
+        }
+        .ob-card {
+            width: 100%;
+            background: var(--bg1);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 28px 28px 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,.09), 0 2px 8px rgba(0,0,0,.05);
+            animation: ob-fade-up .45s .08s ease both;
+        }
+        .ob-card-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text0);
+            margin-bottom: 6px;
+            letter-spacing: .02em;
+        }
+        .ob-card-desc {
+            font-size: 12px;
+            color: var(--text2);
+            line-height: 1.75;
+            margin-bottom: 22px;
+        }
+        .ob-features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 26px;
+        }
+        .ob-feat {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            transition: border-color .15s, background .15s;
+        }
+        .ob-feat:hover {
+            background: var(--bg3);
+            border-color: var(--border2);
+        }
+        .ob-feat-icon {
+            font-size: 18px;
+            line-height: 1;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .ob-feat-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text0);
+            margin-bottom: 2px;
+        }
+        .ob-feat-desc {
+            font-size: 10px;
+            color: var(--text3);
+            line-height: 1.5;
+        }
+        .ob-steps {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 22px;
+        }
+        .ob-step-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--border2);
+            transition: background .25s, transform .25s;
+        }
+        .ob-step-dot.active {
+            background: var(--accent);
+            transform: scale(1.35);
+        }
+        .ob-step-dot.done {
+            background: color-mix(in srgb, var(--accent) 50%, var(--border2));
+        }
+        .ob-themes {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+        .ob-theme-chip {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 6px 8px;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            background: var(--bg2);
+            cursor: pointer;
+            transition: all .18s;
+            font-family: inherit;
+            font-size: 10px;
+            color: var(--text2);
+            letter-spacing: .04em;
+        }
+        .ob-theme-chip:hover {
+            border-color: var(--border2);
+            background: var(--bg3);
+            color: var(--text1);
+        }
+        .ob-theme-chip.selected {
+            border-color: var(--accent);
+            background: var(--info-bg);
+            color: var(--info-text);
+            font-weight: 700;
+        }
+        .ob-theme-preview {
+            width: 36px;
+            height: 26px;
+            border-radius: 6px;
+            border: 1px solid rgba(0,0,0,.12);
+            display: flex;
+            align-items: flex-end;
+            padding: 4px;
+            gap: 2px;
+            overflow: hidden;
+        }
+        .ob-theme-bar {
+            height: 5px;
+            border-radius: 2px;
+        }
+        .ob-opt {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 18px;
+            border-radius: 12px;
+            border: 1.5px solid var(--border);
+            background: var(--bg1);
+            cursor: pointer;
+            font-family: inherit;
+            color: var(--text0);
+            width: 100%;
+            text-align: left;
+            transition: all .18s;
+            margin-bottom: 10px;
+        }
+        .ob-opt:hover {
+            border-color: var(--accent);
+            background: var(--info-bg);
+        }
+        .ob-opt.pri-opt {
+            border-color: var(--accent);
+            background: var(--info-bg);
+        }
+        .ob-opt.pri-opt:hover {
+            background: color-mix(in srgb, var(--info-bg) 85%, var(--accent) 15%);
+        }
+        .ob-opt-icon {
+            font-size: 26px;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+        .ob-opt-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text0);
+            margin-bottom: 2px;
+        }
+        .ob-opt-desc {
+            font-size: 11px;
+            color: var(--text2);
+            line-height: 1.5;
+        }
+        .ob-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 18px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .ob-btn-pri {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 9px;
+            padding: 10px 24px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: .04em;
+            transition: opacity .15s, transform .15s;
+        }
+        .ob-btn-pri:hover { opacity: .88; transform: translateY(-1px); }
+        .ob-btn-sec {
+            background: transparent;
+            color: var(--text2);
+            border: 1px solid var(--border2);
+            border-radius: 9px;
+            padding: 10px 18px;
+            font-family: inherit;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+        .ob-btn-sec:hover { background: var(--bg2); color: var(--text0); }
+        .ob-footnote {
+            font-size: 10px;
+            color: var(--text3);
+            text-align: center;
+            margin-top: 18px;
+            line-height: 1.6;
+            letter-spacing: .02em;
+            animation: ob-fade-in .5s .3s ease both;
+        }
+
+        .ob-progress {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 22px;
+            flex-wrap: wrap;
+        }
+        .ob-progress-step {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 10px;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--text3);
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--bg1) 75%, transparent);
+            border: 1px solid var(--border);
+        }
+        .ob-progress-step.active {
+            color: var(--info-text);
+            background: var(--info-bg);
+            border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+        }
+        .ob-progress-step.done {
+            color: var(--text1);
+        }
+        .ob-progress-index {
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg2);
+            color: var(--text1);
+            font-size: 10px;
+            font-weight: 700;
+        }
+        .ob-progress-step.active .ob-progress-index,
+        .ob-progress-step.done .ob-progress-index {
+            background: var(--accent);
+            color: #fff;
+        }
+        .ob-story {
+            margin-bottom: 18px;
+            line-height: 1.8;
+            color: var(--text1);
+            font-size: 12px;
+        }
+        .ob-story strong {
+            color: var(--text0);
+        }
+        .ob-mini-preview {
+            background: linear-gradient(180deg, color-mix(in srgb, var(--bg2) 72%, transparent), color-mix(in srgb, var(--bg1) 92%, transparent));
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 14px;
+            margin-bottom: 20px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+        }
+        .ob-mini-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .ob-mini-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text0);
+            letter-spacing: .04em;
+        }
+        .ob-mini-sub {
+            font-size: 10px;
+            color: var(--text3);
+        }
+        .ob-mini-badge {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ok-text);
+            background: var(--ok-bg);
+            border: 1px solid var(--ok-border);
+            border-radius: 999px;
+            padding: 4px 8px;
+            white-space: nowrap;
+        }
+        .ob-mini-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .ob-mini-item {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            background: var(--bg1);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+        .ob-mini-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--accent);
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent);
+        }
+        .ob-mini-item.urgent .ob-mini-dot { background: var(--err-text); box-shadow: 0 0 0 4px color-mix(in srgb, var(--err-text) 16%, transparent); }
+        .ob-mini-item.done .ob-mini-dot { background: var(--ok-text); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok-text) 16%, transparent); }
+        .ob-mini-task {
+            font-size: 11px;
+            color: var(--text0);
+            font-weight: 600;
+        }
+        .ob-mini-meta {
+            font-size: 10px;
+            color: var(--text3);
+            white-space: nowrap;
+        }
+        .ob-mini-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 10px;
+            color: var(--text3);
+        }
+        .ob-mini-track {
+            flex: 1;
+            height: 6px;
+            background: var(--border);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .ob-mini-fill {
+            width: 62%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 40%, #fff));
+            border-radius: inherit;
+        }
+        .ob-value-list {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 22px;
+        }
+        .ob-value {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 11px 12px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+        .ob-value-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 9px;
+            background: var(--bg1);
+            border: 1px solid var(--border);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .ob-value-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text0);
+            margin-bottom: 3px;
+        }
+        .ob-value-text {
+            font-size: 10px;
+            color: var(--text2);
+            line-height: 1.65;
+        }
+        .ob-inline-hint {
+            margin-top: 14px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: var(--bg2);
+            border: 1px dashed var(--border2);
+            font-size: 11px;
+            line-height: 1.7;
+            color: var(--text2);
+        }
+        .ob-inline-hint strong { color: var(--text0); }
+        .ob-section-label {
+            font-size: 10px;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: var(--text3);
+            margin-bottom: 8px;
+        }
+        .ob-opt small {
+            display: block;
+            margin-top: 6px;
+            font-size: 10px;
+            color: var(--text3);
+            line-height: 1.55;
+        }
+        .ob-opt-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .ob-opt-tag {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            padding: 3px 7px;
+            border-radius: 999px;
+            background: var(--bg2);
+            color: var(--text2);
+            border: 1px solid var(--border);
+        }
+        .ob-opt.pri-opt .ob-opt-tag {
+            background: color-mix(in srgb, var(--accent) 14%, var(--bg1));
+            color: var(--info-text);
+            border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+        }
+        .ob-dual-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        .ob-dual-actions > * { flex: 1 1 180px; }
+        .ob-btn-pri.big {
+            padding: 14px 22px;
+            border-radius: 12px;
+            font-size: 13px;
+            box-shadow: 0 12px 24px color-mix(in srgb, var(--accent) 22%, transparent);
+        }
+        .ob-theme-note {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text3);
+            margin-top: -4px;
+            margin-bottom: 20px;
+        }
+        @media (max-width: 640px) {
+            .ob-card { padding: 22px 18px 20px; border-radius: 18px; }
+            .ob-title { font-size: 24px; }
+            .ob-features { grid-template-columns: 1fr; }
+            .ob-themes { grid-template-columns: repeat(3, 1fr); }
+            .ob-progress { gap: 8px; }
+            .ob-progress-step { width: 100%; justify-content: center; }
+        }
+
+        /* ══ HELP GUIDE REDESIGN ══ */
+        .hg-overlay {
+            /* uses existing .ov styles, just overriding modal */
+        }
+        .mod.hg-modal {
+            max-width: min(1100px, calc(100vw - 48px));
+            width: min(1100px, calc(100vw - 48px));
+            height: 88vh;
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            border-radius: 18px;
+            overflow: hidden;
+        }
+        .hg-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg1);
+            flex-shrink: 0;
+        }
+        .hg-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .hg-header-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            background: var(--info-bg);
+            color: var(--info-text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .hg-header-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text0);
+        }
+        .hg-header-sub {
+            font-size: 10px;
+            color: var(--text3);
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            margin-top: 1px;
+        }
+        .hg-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .hg-sidebar {
+            width: 230px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 12px 8px;
+            background: var(--bg0);
+        }
+        .hg-sidebar-section {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--text3);
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            padding: 12px 10px 5px;
+        }
+        .hg-nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            width: 100%;
+            text-align: left;
+            padding: 8px 10px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            color: var(--text1);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            transition: all .12s;
+        }
+        .hg-nav-btn:hover { background: var(--bg2); color: var(--text0); }
+        .hg-nav-btn.active {
+            background: var(--info-bg);
+            color: var(--info-text);
+            font-weight: 600;
+        }
+        .hg-nav-icon {
+            font-size: 15px;
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .hg-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 28px 40px;
+        }
+        .hg-items-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        @media (max-width: 780px) {
+            .hg-items-grid { grid-template-columns: 1fr; }
+        }
+        .hg-section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text0);
+            margin-bottom: 4px;
+        }
+        .hg-section-lead {
+            font-size: 12px;
+            color: var(--text2);
+            line-height: 1.7;
+            margin-bottom: 22px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .hg-item {
+            display: flex;
+            gap: 14px;
+            margin-bottom: 18px;
+            padding: 14px 16px;
+            background: var(--bg1);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: border-color .12s;
+        }
+        .hg-item:hover { border-color: var(--border2); }
+        .hg-item-num {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            background: var(--info-bg);
+            color: var(--info-text);
+            font-size: 11px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .hg-item-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text0);
+            margin-bottom: 5px;
+        }
+        .hg-item-text {
+            font-size: 11px;
+            color: var(--text1);
+            line-height: 1.75;
+        }
+        .hg-tip {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-top: 18px;
+            padding: 12px 16px;
+            background: var(--warn-bg);
+            border: 1px solid var(--warn-border);
+            border-radius: 10px;
+            font-size: 11px;
+            color: var(--warn-text);
+            line-height: 1.7;
+        }
+        .hg-tip-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .hg-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 7px;
+            border-radius: 5px;
+            background: var(--info-bg);
+            color: var(--info-text);
+            font-size: 10px;
+            font-weight: 700;
+            vertical-align: middle;
+        }
+        .hg-footer {
+            padding: 14px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            background: var(--bg1);
+        }
+        .hg-footer-note {
+            font-size: 11px;
+            color: var(--text3);
         }
 
         select option {
@@ -3068,10 +3836,9 @@
         }
     </style>
 </head>
-
 <body>
-    <div id="root"></div>
-    <script>
+<div id="root"></div>
+<script>
 
         function procesarImportacionIncremental() {
             const hash = window.location.hash;
@@ -7387,87 +8154,203 @@ e("div", { className: "calgrid" },
            12. PANTALLAS DE ESTADO
            ══════════════════════════════════════════════════════════════════════ */
         /* ─── WELCOME SCREEN ── */
-        function WelcomeScreen({ onLocal, onDrive, onDemo, expiredMsg }) {
-            return e("div", {
-                style: {
-                    minHeight: "100vh", display: "flex", flexDirection: "column",
-                    alignItems: "center", justifyContent: "center",
-                    background: "var(--bg0)", padding: 24
-                }
-            },
-                e("div", { style: { textAlign: "center", marginBottom: 48 } },
-                    e("div", { style: { fontSize: 32, marginBottom: 8 } }, "◈"),
-                    e("h1", {
-                        style: {
-                            fontSize: 24, fontWeight: 700, color: "var(--text0)",
-                            letterSpacing: ".05em", marginBottom: 6
-                        }
-                    }, "UAI Planner"),
-                    e("p", { style: { fontSize: 13, color: "var(--text2)" } },
-                        "Tu organizador académico personal")
-                ),
-                expiredMsg && e("div", {
-                    style: {
-                        background: "var(--warn-bg)", border: "1px solid var(--warn-border)",
-                        color: "var(--warn-text)", padding: "10px 18px", borderRadius: 7,
-                        fontSize: 12, marginBottom: 24, maxWidth: 380, textAlign: "center"
-                    }
-                }, expiredMsg),
-                e("div", { style: { display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 360 } },
-                    e("button", {
-                        onClick: onDrive,
-                        style: {
-                            display: "flex", alignItems: "center", gap: 12,
-                            padding: "16px 20px", borderRadius: 9, cursor: "pointer",
-                            fontFamily: "inherit", fontSize: 14, fontWeight: 600,
-                            background: "var(--info-bg)", border: "1px solid var(--accent)",
-                            color: "var(--info-text)", transition: "all .15s", textAlign: "left"
-                        }
-                    },
-                        e("span", { style: { fontSize: 22 } }, "☁"),
-                        e("div", null,
-                            e("div", null, "Conectar con Google Drive"),
-                            e("div", { style: { fontSize: 11, fontWeight: 400, color: "var(--text2)", marginTop: 2 } },
-                                "Tus datos se sincronizan automáticamente")
+        function WelcomeScreen({ onLocal, onDemo, onShowHelp, expiredMsg }) {
+            const [step, setStep] = useState("welcome");
+            const [animating, setAnimating] = useState(false);
+            const [currentTheme, setCurrentTheme] = useState(localStorage.getItem("uai-theme") || "noche");
+
+            const THEMES = [
+                { id: "hueso",    label: "Hueso",    bg: "#f0ece3", fg: "#28231c", bar: "#4e47b8", bar2: "#c4bcaf" },
+                { id: "claro",    label: "Claro",    bg: "#f5f5f5", fg: "#111111", bar: "#4040cc", bar2: "#d8d8d8" },
+                { id: "noche",    label: "Noche",    bg: "#0e0e10", fg: "#ececec", bar: "#8880f0", bar2: "#2c2c30" },
+                { id: "pizarron", label: "Pizarrón", bg: "#181c2e", fg: "#e8eaf8", bar: "#a09cf8", bar2: "#363c5e" },
+                { id: "cafe",     label: "Café",     bg: "#1a1410", fg: "#f0e8d8", bar: "#c0a8f0", bar2: "#3e2e24" },
+            ];
+
+            const FEATURES = [
+                { icon: "📚", label: "Convierte materias en un plan real", desc: "Pasás de una lista suelta de entregas a una semana ordenada por franjas, prioridades y horas disponibles." },
+                { icon: "⏱", label: "Registra estudio sin fricción", desc: "Cada sesión suma tiempo real a tus materias y tareas, para ver si vas llegando o si ya te estás quedando atrás." },
+                { icon: "🚨", label: "Te avisa antes del desastre", desc: "Fechas de inicio, vencimientos y alertas configurables para no enterarte tarde de lo importante." },
+            ];
+
+            function goTo(next) {
+                if (animating) return;
+                setAnimating(true);
+                setTimeout(() => { setStep(next); setAnimating(false); }, 210);
+            }
+
+            function pickTheme(id) {
+                setCurrentTheme(id);
+                applyTheme(id);
+            }
+
+            const STEPS = [
+                { id: "welcome", label: "Inicio" },
+                { id: "tema", label: "Estilo" },
+                { id: "dataset", label: "Arranque" },
+            ];
+            const stepIdx = STEPS.findIndex(s => s.id === step);
+
+            const progress = e("div", { className: "ob-progress" },
+                STEPS.map((s, i) => e("div", {
+                    key: s.id,
+                    className: "ob-progress-step" + (i === stepIdx ? " active" : i < stepIdx ? " done" : "")
+                },
+                    e("span", { className: "ob-progress-index" }, i < stepIdx ? "✓" : i + 1),
+                    e("span", null, s.label)
+                ))
+            );
+
+            return e("div", { className: "ob-screen" },
+                e("div", { className: "ob-inner", style: { opacity: animating ? 0 : 1, transform: animating ? "translateY(10px)" : "translateY(0)", transition: "opacity .2s, transform .2s" } },
+
+                    e("div", { className: "ob-hero" },
+                        e("span", { className: "ob-logo-mark" }, "◈"),
+                        e("div", { className: "ob-title" }, "UAI Planner"),
+                        e("div", { className: "ob-subtitle" }, "Convertí tu cursada en un plan que se mueve con vos")
+                    ),
+
+                    expiredMsg && e("div", {
+                        style: { background: "var(--warn-bg)", border: "1px solid var(--warn-border)", color: "var(--warn-text)", padding: "10px 18px", borderRadius: 9, fontSize: 12, marginBottom: 16, width: "100%", textAlign: "center" }
+                    }, expiredMsg),
+
+                    progress,
+
+                    step === "welcome" && e("div", { className: "ob-card" },
+                        e("div", { className: "ob-card-title" }, "Organizá tu semana sin caos"),
+                        e("div", { className: "ob-card-desc" },
+                            "Convertí materias, fechas límite, sesiones y horarios en un plan claro que podés seguir todos los días. UAI Planner te ayuda a dejar de improvisar, ver qué toca hoy y adelantarte a lo importante antes de llegar con el agua al cuello."
+                        ),
+                        e("div", { className: "ob-mini-preview" },
+                            e("div", { className: "ob-mini-top" },
+                                e("div", null,
+                                    e("div", { className: "ob-mini-title" }, "Vista rápida de una semana viva"),
+                                    e("div", { className: "ob-mini-sub" }, "Hoy, tareas urgentes y progreso real en segundos")
+                                ),
+                                e("div", { className: "ob-mini-badge" }, "62% de la meta")
+                            ),
+                            e("div", { className: "ob-mini-list" },
+                                e("div", { className: "ob-mini-item urgent" },
+                                    e("span", { className: "ob-mini-dot" }),
+                                    e("div", { className: "ob-mini-task" }, "TP de Matemática · arrancar hoy"),
+                                    e("div", { className: "ob-mini-meta" }, "vence mañana")
+                                ),
+                                e("div", { className: "ob-mini-item" },
+                                    e("span", { className: "ob-mini-dot" }),
+                                    e("div", { className: "ob-mini-task" }, "Bloque de estudio · Bases de Datos"),
+                                    e("div", { className: "ob-mini-meta" }, "19:00 — Noche")
+                                ),
+                                e("div", { className: "ob-mini-item done" },
+                                    e("span", { className: "ob-mini-dot" }),
+                                    e("div", { className: "ob-mini-task" }, "Resumen de Historia · completado"),
+                                    e("div", { className: "ob-mini-meta" }, "2 sesiones")
+                                )
+                            ),
+                            e("div", { className: "ob-mini-footer" },
+                                e("span", null, "Horas de la semana"),
+                                e("div", { className: "ob-mini-track" }, e("div", { className: "ob-mini-fill" })),
+                                e("span", null, "8.5h / 13h")
+                            )
+                        ),
+                        e("div", { className: "ob-story" },
+                            e("strong", null, "La gracia de la app no es solo guardar cosas: "),
+                            "es mostrarte qué conviene hacer ahora, cuánto tiempo real ya invertiste y qué materias o entregables te van a pedir atención antes que el resto."
+                        ),
+                        e("div", { className: "ob-value-list" },
+                            FEATURES.map(f => e("div", { key: f.label, className: "ob-value" },
+                                e("span", { className: "ob-value-icon" }, f.icon),
+                                e("div", null,
+                                    e("div", { className: "ob-value-title" }, f.label),
+                                    e("div", { className: "ob-value-text" }, f.desc)
+                                )
+                            ))
+                        ),
+                        e("div", { className: "ob-dual-actions" },
+                            e("button", { className: "ob-btn-pri big", onClick: () => goTo("tema"), style: { width: "100%" } }, "Empezar →")
+                        ),
+                        e("div", { className: "ob-inline-hint" },
+                            e("strong", null, "Inicio recomendado:"),
+                            " arrancá en local y, cuando ya tengas tu planner armado, conectá Google Drive desde ",
+                            e("strong", null, "💾 Datos"),
+                            " para sincronizarlo entre dispositivos."
                         )
                     ),
-                    e("button", {
-                        onClick: onLocal,
-                        style: {
-                            display: "flex", alignItems: "center", gap: 12,
-                            padding: "16px 20px", borderRadius: 9, cursor: "pointer",
-                            fontFamily: "inherit", fontSize: 14, fontWeight: 600,
-                            background: "var(--bg1)", border: "1px solid var(--border2)",
-                            color: "var(--text0)", transition: "all .15s", textAlign: "left"
-                        }
-                    },
-                        e("span", { style: { fontSize: 22 } }, "💻"),
-                        e("div", null,
-                            e("div", null, "Usar sin cuenta"),
-                            e("div", { style: { fontSize: 11, fontWeight: 400, color: "var(--text2)", marginTop: 2 } },
-                                "Los datos se guardan solo en este dispositivo")
+
+                    step === "tema" && e("div", { className: "ob-card" },
+                        e("div", { className: "ob-card-title" }, "Antes de empezar, elegí tu tema"),
+                        e("div", { className: "ob-card-desc" },
+                            "Elegí el tema que más te guste para arrancar. Es solo una personalización visual, así que después podés cambiarlo cuando quieras desde el header o desde Configuración."
+                        ),
+                        e("div", { className: "ob-themes" },
+                            THEMES.map(t => e("button", {
+                                key: t.id,
+                                className: "ob-theme-chip" + (currentTheme === t.id ? " selected" : ""),
+                                onClick: () => pickTheme(t.id)
+                            },
+                                e("div", { className: "ob-theme-preview", style: { background: t.bg } },
+                                    e("div", { className: "ob-theme-bar", style: { flex: 2, background: t.bar } }),
+                                    e("div", { className: "ob-theme-bar", style: { flex: 1, background: t.bar2 } })
+                                ),
+                                t.label
+                            ))
+                        ),
+                        e("div", { className: "ob-theme-note" }, "No te bloquees acá: es solo estética. Lo importante viene en el siguiente paso."),
+                        e("div", { className: "ob-row" },
+                            e("button", { className: "ob-btn-sec", onClick: () => goTo("welcome") }, "← Atrás"),
+                            e("button", { className: "ob-btn-pri", onClick: () => goTo("dataset") }, "Continuar →")
                         )
                     ),
-                    e("button", {
-                        onClick: onDemo,
-                        style: {
-                            background: "transparent", border: "none",
-                            color: "var(--text3)", cursor: "pointer",
-                            fontFamily: "inherit", fontSize: 12,
-                            padding: "8px", marginTop: 4,
-                            transition: "color .15s"
-                        }
-                    },
-                        "Ver demo con datos de ejemplo"
+
+                    step === "dataset" && e("div", { className: "ob-card" },
+                        e("div", { className: "ob-card-title" }, "Elegí tu forma de arranque"),
+                        e("div", { className: "ob-card-desc" },
+                            "Elegís cómo entrar por primera vez y listo. En cuanto entres, la app te abre la guía completa para que no tengas que adivinar nada ni perder tiempo buscando dónde está cada cosa."
+                        ),
+                        e("div", { className: "ob-section-label" }, "Elegí una opción"),
+                        e("button", { className: "ob-opt pri-opt", onClick: () => onLocal() },
+                            e("span", { className: "ob-opt-icon" }, "⚡"),
+                            e("div", null,
+                                e("div", { className: "ob-opt-title-row" },
+                                    e("div", { className: "ob-opt-title" }, "Empezar rápido en modo local"),
+                                    e("span", { className: "ob-opt-tag" }, "recomendado")
+                                ),
+                                e("div", { className: "ob-opt-desc" }, "Entrás ya mismo a la app con tu planner vacío para empezar a cargar materias, horarios y tareas."),
+                                e("small", null, "Tus datos quedan guardados en este navegador. Después podés exportar, importar o sincronizar con Google Drive desde 💾 Datos.")
+                            )
+                        ),
+                        e("button", { className: "ob-opt", onClick: () => onDemo() },
+                            e("span", { className: "ob-opt-icon" }, "🎲"),
+                            e("div", null,
+                                e("div", { className: "ob-opt-title-row" },
+                                    e("div", { className: "ob-opt-title" }, "Explorar con datos de ejemplo"),
+                                    e("span", { className: "ob-opt-tag" }, "demo")
+                                ),
+                                e("div", { className: "ob-opt-desc" }, "Ideal para entender rápido cómo se conectan materias, backlog, calendario, sesiones y alertas."),
+                                e("small", null, "Se cargan materias, tareas y sesiones ficticias para que puedas recorrer la app y enseguida ver cómo te devuelve valor.")
+                            )
+                        ),
+                        e("div", { className: "ob-inline-hint" },
+                            e("strong", null, "Al entrar se abre la guía completa:"),
+                            " vas a tener a mano el recorrido inicial, cómo cargar materias, cómo usar la Vista Semana y cómo manejar tus datos sin romper nada."
+                        ),
+                        e("div", { className: "ob-inline-hint" },
+                            e("strong", null, "Siguiente paso recomendado al entrar:"),
+                            " crear tus materias, definir objetivos semanales y marcar tus slots en la Vista Semana. Con eso la app ya empieza a transformarte fechas sueltas en un plan concreto."
+                        ),
+                        e("div", { className: "ob-row" },
+                            e("button", { className: "ob-btn-sec", onClick: () => goTo("tema") }, "← Atrás")
+                        )
+                    
                     )
                 ),
-                e("p", { style: { fontSize: 10, color: "var(--text3)", marginTop: 40, textAlign: "center", maxWidth: 320 } },
-                    "Al conectar tu cuenta solo accedemos al archivo de datos que creamos. " +
-                    "No leemos ni modificamos ningún otro archivo de tu Drive."
+                e("p", { className: "ob-footnote" },
+                    "Tus datos pueden vivir en este navegador, en un JSON exportado o sincronizados con Google Drive · La configuración visual se puede cambiar en cualquier momento"
                 )
             );
         }
+
         /* ─── RESET MODAL ── */
+
         function ResetModal({ driveConnected, resetConfirm, setResetConfirm, onResetEmpty, onResetSample, onClose }) {
             // resetConfirm: null | "empty" | "sample"
             if (resetConfirm) {
@@ -7594,155 +8477,243 @@ e("div", { className: "calgrid" },
         /* ─── HELP GUIDE ── */
         const GUIDE_SECTIONS = [
             {
-                id: "inicio", label: "🚀 Primeros pasos", content: [
-                    { title: "1. Creá tus materias", text: "Abrí ⚙ Config → Materias y agregá cada materia con su nombre, código, color y período (C1, C2 o Anual)." },
-                    { title: "2. Configurá objetivos", text: "En ⚙ Config → Materias, editá cada materia para definir cuántas horas mínimas y máximas querés dedicarle por semana." },
-                    { title: "3. Asigná slots de estudio", text: "Dentro de los objetivos, usá la grilla de horario para marcar en qué días y momentos (Mañana/Tarde/Noche) estudias cada materia." },
-                    { title: "4. Creá tus tareas", text: "En Backlog o Kanban, creá las tareas de cada materia: entregas, parciales, lecturas. Podés agregar checklists y marcarlas como obligatorias." },
-                    { title: "5. Empezá a estudiar", text: "Abrí la vista ◈ Hoy. Vas a ver qué materias te tocan en este momento del día. Hacé click en ▶ Iniciar sesión para empezar." },
+                id: "inicio", label: "Primeros pasos", icon: "🚀",
+                lead: "La mejor forma de sacarle jugo a UAI Planner es pensarla como una cadena simple: primero definís tu mapa semanal, después cargás lo que tenés que hacer y finalmente registrás lo que realmente estudiás. La app hace el resto: ordenar, priorizar y mostrarte dónde estás parado.",
+                content: [
+                    { title: "1. Elegí cómo querés arrancar", text: "Podés entrar con el planner vacío para configurarlo vos o cargar los datos de ejemplo para recorrer las vistas sin fricción. El modo local guarda todo en este navegador; después, si querés, podés exportar un respaldo o conectar Google Drive para sincronizar." },
+                    { title: "2. Creá tus materias primero", text: "Abrí ⚙ Config → Materias y cargá nombre, código, color y período. No es un detalle cosmético: cada materia se usa luego para agrupar tareas, registrar sesiones, colorear tarjetas y calcular el progreso semanal." },
+                    { title: "3. Definí objetivos y slots", text: "En ✎ Objetivos configurás horas mínimas y máximas por semana y marcás en qué días/franjas estudiás cada materia. Esa grilla es la base de la Vista Hoy y la Vista Semana. Sin eso, la app no sabe cuándo debería aparecerte cada materia." },
+                    { title: "4. Ajustá tus franjas horarias", text: "Desde ⚙ Config → Horarios decidís si trabajás con 3 o 6 franjas y a qué hora empieza cada una. Esto le da realismo a la planificación: no es lo mismo una mañana temprana que una noche de repaso." },
+                    { title: "5. Cargá tus primeras tareas con fechas reales", text: "En Backlog o Kanban usá + Nueva tarea y definí título, materia, prioridad, fecha de inicio, fecha límite y checklist si corresponde. La fecha de inicio sirve para que la app te diga cuándo deberías haber empezado; la fecha límite marca la urgencia de verdad." },
+                    { title: "6. Empezá a registrar sesiones", text: "Desde la Vista Hoy o desde el detalle de una tarea podés iniciar una sesión y dejar que el timer mida tiempo activo real. Es el paso que convierte la app en algo más que una lista bonita: a partir de ahí empezás a ver horas acumuladas, progreso semanal y esfuerzo real por materia." },
                 ]
             },
             {
-                id: "hoy", label: "◈ Vista Hoy", content: [
-                    { title: "¿Qué muestra?", text: "La vista Hoy te muestra qué materias tenés asignadas para cada momento del día (Mañana, Tarde, Noche) según los slots que configuraste." },
-                    { title: "Secciones del día", text: "La franja horaria actual aparece grande y activa. Las otras franjas aparecen más pequeñas y apagadas. Solo se muestran materias con slots asignados para hoy." },
-                    { title: "Ver semana", text: "El botón 📅 Ver semana abre una grilla 7×3 con toda tu semana. Podés hacer click en el ✎ de cualquier celda para agregar o quitar materias de ese slot." },
-                    { title: "Resumen semanal", text: "Al final de la vista ves el progreso de horas de todas tus materias durante la semana, con el marcador de mínimo. El botón ✎ Objetivos te lleva a configurar los objetivos de esa materia." },
-                    { title: "Franjas del día", text: "Podés cambiar los horarios de Mañana, Tarde y Noche con el ✎ al lado de la franja actual, o desde ⚙ Config → Horarios." },
+                id: "flujo", label: "Flujo recomendado", icon: "🧭",
+                lead: "Si no sabés por dónde empezar, seguí este recorrido. En menos de diez minutos podés pasar de cero a tener un planner que ya te diga qué estudiar hoy y qué se viene encima esta semana.",
+                content: [
+                    { title: "Paso 1 — armá la estructura", text: "Cargá materias, definí colores y completá objetivos de horas. Esto crea la estructura base sobre la que se calculan progreso, recomendaciones y resumen semanal." },
+                    { title: "Paso 2 — dibujá tu semana", text: "Usá la Vista Semana para marcar en qué días y franjas aparece cada materia. Pensalo como una grilla de intención realista, no como un ideal imposible. La app funciona mejor cuando el mapa semanal se parece a tu vida real." },
+                    { title: "Paso 3 — volcá entregas, parciales y lecturas", text: "Cargá tareas con fechas de inicio y vencimiento. Si una tarea es importante, marcala como obligatoria para que entre en el sistema de alertas. El checklist te sirve para dividir trabajos grandes en pasos más manejables." },
+                    { title: "Paso 4 — usá la Vista Hoy para ejecutar", text: "Cuando ya está todo cargado, la Vista Hoy se vuelve el centro de operaciones: muestra qué materias tocan según tu franja actual, qué viene después y cómo va tu progreso semanal." },
+                    { title: "Paso 5 — registrá y corregí", text: "Después de cada bloque, guardá la sesión. Si te olvidaste o te equivocaste, podés editarla luego desde Materias. La app está pensada para acompañarte, no para castigarte por no usarla perfecto." },
+                    { title: "Paso 6 — revisá una vez por semana", text: "Dedicale unos minutos a revisar tareas urgentes, mover slots y ver si alguna materia viene muy por debajo del mínimo. Esa pequeña revisión semanal evita que el planner se vuelva decorativo." },
                 ]
             },
             {
-                id: "materias", label: "◉ Materias", content: [
-                    { title: "Lista de materias", text: "Cada fila muestra el progreso de horas de la semana actual. La barra de color indica si estás por debajo del mínimo (rojo), en zona segura (amarillo) o sobre el máximo (verde)." },
-                    { title: "Expandir una materia", text: "Hacé click en cualquier fila para expandirla y ver el detalle: sesiones del período, métricas de horas, tareas pendientes y el historial de sesiones." },
-                    { title: "Períodos de análisis", text: "Dentro de cada materia podés ver las sesiones de esta semana, las últimas 2 semanas, 4 semanas, o un rango personalizado." },
-                    { title: "Editar objetivos", text: "El botón ✎ Objetivos abre un popup donde configurás las horas mín/máx por semana y la grilla de slots de horario." },
-                    { title: "Cargar horas manuales", text: "Con + Cargar horas podés registrar tiempo de estudio que hiciste fuera de la app (leyendo en papel, en clase, etc.)." },
+                id: "hoy", label: "Vista Hoy", icon: "◈",
+                lead: "La Vista Hoy es donde el planner deja de ser configuración y se convierte en acción. Está hecha para contestar tres preguntas rápido: qué me toca ahora, qué me falta esta semana y con qué tarea conviene avanzar primero.",
+                content: [
+                    { title: "Franja activa y materias del momento", text: "La vista destaca la franja horaria actual y muestra las materias asignadas a ese bloque según tu configuración semanal. Si hay varias, las ves juntas; si no hay ninguna, la app te lo dice para que ajustes tu grilla si hace falta." },
+                    { title: "Más tarde hoy", text: "Cuando tenés materias cargadas en franjas posteriores, aparece una sección que anticipa lo que viene después. Sirve para no sorprenderte a la noche con algo que en realidad ya sabías que tocaba ese día." },
+                    { title: "Arrancar una sesión desde contexto", text: "Cada tarjeta te deja iniciar sesión directamente y, si querés, asociarla a una tarea específica. Eso hace que luego puedas ver no solo cuánto estudiaste una materia, sino cuánto tiempo real le dedicaste a cada entregable." },
+                    { title: "Editar franjas sin salir", text: "El editor inline de la franja activa te deja tocar horarios sin pasar por Configuración. Es útil cuando tu rutina cambia y querés acomodar rápido la lectura de la app a tu día real." },
+                    { title: "Resumen semanal al pie", text: "La parte inferior muestra cuántas horas llevás acumuladas por materia contra tus objetivos mínimo y máximo. Es una brújula simple para saber si venís equilibrado o si alguna materia está quedando demasiado relegada." },
+                    { title: "Qué hacer si la vista está vacía", text: "Si Hoy no muestra materias, normalmente faltan slots o la materia no está asignada a este día/franja. La solución no está en la tarea: está en la grilla semanal y en los objetivos de cada materia." },
                 ]
             },
             {
-                id: "sesiones", label: "⏱ Sesiones y Pomodoro", content: [
-                    { title: "Iniciar una sesión", text: "Desde la vista Hoy o desde una materia expandida, hacé click en ▶ Iniciar sesión. Podés asociarla a una tarea específica o dejarla sin tarea." },
-                    { title: "El timer", text: "La pantalla de sesión muestra un cronómetro que solo cuenta el tiempo de estudio activo. Si pausás, el reloj de pausa corre por separado pero no se guarda." },
-                    { title: "Objetivo del slot", text: "Debajo del timer ves dos reglas: Simple (objetivo fijo por slot) y Ponderado (se adapta a lo ya estudiado esta semana). La barra de progreso avanza entre ambas escalas." },
-                    { title: "Simple vs Ponderado", text: "Simple divide el objetivo semanal en partes iguales. Ponderado calcula cuánto te falta para el mínimo semanal y lo divide entre los slots que quedan. Si ya cumpliste el mínimo semanal, el Ponderado lo indica." },
-                    { title: "Guardar o cancelar", text: "Al terminar, ▣ Terminar y guardar registra la sesión. ✕ Cancelar sin guardar la descarta completamente." },
+                id: "semana", label: "Vista Semana", icon: "📅",
+                lead: "La Vista Semana es el tablero donde diseñás tu mapa de estudio. No te muestra fechas límite: te muestra tiempo disponible y distribución por materia, que es lo que después sostiene todo lo demás.",
+                content: [
+                    { title: "Grilla 7 × franjas", text: "La tabla cruza días con franjas y te deja ver de un vistazo dónde aparece cada materia. Si activaste 6 franjas, la grilla se vuelve más detallada y útil para rutinas con horarios cambiantes o partidas largas de estudio." },
+                    { title: "Editar un slot puntual", text: "En cada celda podés abrir el selector y marcar o desmarcar materias. Esto sirve para ajustes finos, por ejemplo mover una materia de martes tarde a miércoles noche sin tocar nada más." },
+                    { title: "Drag & drop para reorganizar rápido", text: "Si preferís trabajar visualmente, podés arrastrar tarjetas entre celdas. Es la forma más cómoda de rearmar una semana cuando cambian tus tiempos o necesitás reforzar una materia específica." },
+                    { title: "Relación directa con Vista Hoy", text: "Todo lo que ves en Hoy sale de esta grilla. Si algo no aparece donde esperabas, casi siempre el origen está acá: día equivocado, franja mal configurada o slot sin asignar." },
+                    { title: "No busques perfección, buscá realidad", text: "La semana ideal suele romperse rápido. Conviene cargar una grilla posible, aunque no sea heroica. Así las recomendaciones, el resumen de horas y la Vista Hoy se vuelven más confiables." },
                 ]
             },
             {
-                id: "tareas", label: "≡ Tareas y Backlog", content: [
-                    { title: "Backlog", text: "Lista de todas las tareas ordenadas por urgencia. Podés filtrar por materia y tipo. El toggle ○◑● cambia el estado directamente desde la lista." },
-                    { title: "Kanban", text: "Vista de columnas: Pendiente / En progreso / Completado. Ideal para ver el flujo de trabajo de un vistazo." },
-                    { title: "Calendario", text: "Muestra eventos derivados de fecha de inicio y fecha límite. Las tareas pueden aparecer como inicio → y fin ←, con enlace al evento relacionado cuando exista." },
-                    { title: "Checklist", text: "Cada tarea puede tener un checklist de ítems. El progreso se muestra como barra en el backlog y el kanban." },
-                    { title: "Obligatorio vs opcional", text: "El indicador 🔴 marca las tareas obligatorias. Usalo para distinguir entregas que no podés saltear de lecturas opcionales." },
+                id: "materias", label: "Materias", icon: "◉",
+                lead: "La vista Materias funciona como panel de control: mezcla objetivos, horas acumuladas, historial de sesiones y tareas pendientes para mostrarte qué materias están bien encaminadas y cuáles están pidiendo atención.",
+                content: [
+                    { title: "Lectura rápida del progreso", text: "Cada fila muestra horas de la semana actual contra tu mínimo y máximo. Si una materia aparece roja, no es necesariamente desastre, pero sí una señal clara de que está por debajo de lo que vos mismo definiste como objetivo." },
+                    { title: "Expandir para ver profundidad", text: "Al abrir una materia accedés a sesiones registradas, métricas del período, tareas vinculadas e historial editable. Es el lugar ideal para entender si una materia está retrasada por falta de tiempo, por pocas sesiones o por una mala distribución semanal." },
+                    { title: "Editar o borrar sesiones", text: "Si registraste mal una duración, la asociaste a la tarea equivocada o querés corregir una fecha, podés hacerlo desde acá. También podés eliminar sesiones duplicadas o pruebas que no quieras contar." },
+                    { title: "Períodos de análisis", text: "No estás limitado a la semana actual. Podés mirar últimas 2 o 4 semanas, el cuatrimestre o un rango personalizado para evaluar tendencia, constancia y carga acumulada." },
+                    { title: "Cargar horas manuales", text: "No todo estudio pasa por el timer. Si leíste apuntes en papel, tuviste una clase productiva o estudiaste sin abrir la app, podés agregar horas manuales para que el progreso no quede subestimado." },
+                    { title: "Objetivos como herramienta, no castigo", text: "Los mínimos y máximos sirven para orientar, no para generar culpa. Ajustalos con frecuencia hasta que representen de verdad lo que podés sostener en una semana normal." },
                 ]
             },
             {
-                id: "datos", label: "☁ Datos y sincronización", content: [
-                    { title: "Google Drive", text: "Conectá tu cuenta desde 💾 Datos → Conectar Google Drive. La app guarda automáticamente cada 4 segundos después del último cambio." },
-                    { title: "Datos locales", text: "Sin cuenta conectada, los datos se guardan en el navegador de este dispositivo. No se sincronizan entre dispositivos." },
-                    { title: "Importar / Exportar", text: "Podés descargar un archivo JSON con todos tus datos como respaldo, o importar uno. Útil para mover datos entre dispositivos sin Drive." },
-                    { title: "Resetear datos", text: "Desde 💾 Datos → Resetear datos podés empezar de cero (datos vacíos) o cargar los datos de ejemplo para explorar la app." },
-                    { title: "Versión de datos", text: "La app usa un sistema de versiones para el formato de datos. Si una versión futura cambia el formato, los datos viejos se migran o se advierte al usuario." },
+                id: "sesiones", label: "Sesiones y Pomodoro", icon: "⏱",
+                lead: "Las sesiones son el corazón operativo de la app. Ahí deja de importar lo que planeabas hacer y empieza a importar lo que efectivamente hiciste. Por eso el sistema distingue tiempo activo, pausa y vínculo con tareas.",
+                content: [
+                    { title: "Sesión libre o vinculada a tarea", text: "Podés estudiar una materia sin asociarla a nada específico o enganchar la sesión a una tarea concreta. La segunda opción es especialmente útil cuando querés saber cuánto esfuerzo real te llevó un trabajo o una lectura grande." },
+                    { title: "Tiempo activo real", text: "El contador principal registra solo tiempo de trabajo. Si pausás, la pausa se mide aparte y no se guarda en la sesión final. Eso evita inflar métricas con minutos que en realidad no fueron de estudio." },
+                    { title: "Objetivo Simple vs Ponderado", text: "Simple reparte el objetivo semanal entre los slots de esa materia. Ponderado mira cuánto te falta todavía esta semana y lo redistribuye entre los bloques restantes. Sirve para aterrizar expectativas cuando ya pasaron días con poco avance." },
+                    { title: "Progreso dentro del slot", text: "La barra del timer te deja ver si en ese bloque ya cumpliste lo esperable o si todavía conviene sostener un poco más. No es una sentencia exacta, pero sí una referencia muy útil para no cortar siempre antes de tiempo." },
+                    { title: "Terminar, pausar o cancelar", text: "Terminar guarda, pausar congela sin perder y cancelar descarta la sesión. La pausa está para interrupciones normales; cancelar debería reservarse para pruebas o arranques accidentales." },
+                    { title: "Corregir después también es parte del sistema", text: "No hace falta usar el timer de manera perfecta. Si se te fue una sesión o la cerraste mal, la editás desde Materias y el historial vuelve a quedar coherente." },
+                ]
+            },
+            {
+                id: "tareas", label: "Tareas y vistas", icon: "≡",
+                lead: "Las tareas son la capa que conecta calendario, urgencia y ejecución. El mismo trabajo puede mirarse como lista, tablero, calendario o detalle profundo, según la clase de decisión que necesites tomar.",
+                content: [
+                    { title: "Crear tareas con intención", text: "Además de título y materia, conviene completar fecha de inicio, fecha límite, prioridad y checklist. Esos campos son los que habilitan alertas, orden lógico de trabajo y una visión menos caótica del avance." },
+                    { title: "Backlog para priorizar", text: "La vista de lista sirve cuando necesitás decidir qué atacar primero. Ordena por urgencia y te deja cambiar de estado rápido sin entrar a cada tarea. Es ideal para una revisión corta de comienzo de semana." },
+                    { title: "Kanban para ver flujo", text: "El tablero Pendiente / En progreso / Completado ayuda a pensar en volumen y cuello de botella. Si tenés demasiadas tareas en progreso, el problema ya se ve antes de que se sienta." },
+                    { title: "Calendario para mirar fechas", text: "La vista mensual te da contexto temporal: cuándo conviene empezar algo, cuándo vence y cómo se encadenan varias tareas entre sí. No reemplaza al backlog, pero sí te ayuda a dimensionar semanas pesadas." },
+                    { title: "Modal de detalle como ficha completa", text: "Desde el detalle ves descripción, checklist, sesiones asociadas, estado, alertas y acciones. Es la ficha más completa de una tarea y el mejor lugar para revisar un entregable importante antes de sentarte a trabajarlo." },
+                    { title: "Checklists para volver atacable lo grande", text: "Los trabajos grandes se vuelven más manejables cuando los partís en subtareas concretas. El porcentaje de checklist aparece en varias vistas, así que no necesitás abrir el detalle para saber si algo está realmente avanzado o solo abierto." },
+                    { title: "Importación JSON", text: "Si ya tenés tareas preparadas afuera, podés importarlas en lote. Es útil para cargar programas completos, cronogramas o listas extensas sin hacerlo todo a mano." },
+                ]
+            },
+            {
+                id: "alertas", label: "Alertas de urgencia", icon: "🔔",
+                lead: "Las alertas existen para que la app no sea solo un registro del desastre, sino también un sistema de anticipación. Se apoyan en fechas de inicio, vencimientos y obligatoriedad de las tareas.",
+                content: [
+                    { title: "Qué tareas entran al sistema", text: "Solo las tareas marcadas como obligatorias participan en las alertas de vencimiento. Esto permite separar lo crítico de lo optativo y evitar ruido innecesario." },
+                    { title: "Lectura de colores", text: "Rojo señala urgencia alta, amarillo indica proximidad importante y verde funciona como aviso temprano. No son colores decorativos: son una forma rápida de priorizar sin releer cada fecha." },
+                    { title: "Fecha de inicio como empujón", text: "Cuando una tarea ya debería haber empezado y sigue pendiente, la app lo marca. Esa alerta suele ser más valiosa que la del vencimiento, porque te avisa cuando todavía hay margen real para reaccionar." },
+                    { title: "Banda del header", text: "El resumen superior concentra las tareas activas en zona de alerta y te deja abrir el detalle para actuar desde ahí mismo. Es una entrada rápida al trabajo importante de la semana." },
+                    { title: "Umbrales configurables", text: "Desde Configuración ajustás cuántos días anticipados corresponden a cada color. Eso permite adaptar la sensibilidad del sistema a tu estilo: no estudia igual quien trabaja con mucha anticipación que quien necesita foco en la semana en curso." },
+                    { title: "Usá Solo alertas cuando estés saturado", text: "En momentos de mucha carga, el filtro Solo alertas del Backlog ayuda a bajar ruido y mirar solo lo que está realmente en zona crítica o próxima." },
+                ]
+            },
+            {
+                id: "config", label: "Configuración", icon: "⚙",
+                lead: "Configuración es el taller del planner. Ahí no solo cambiás detalles: definís las reglas con las que después la app interpreta tu semana, tus metas y la estética con la que te acompaña todos los días.",
+                content: [
+                    { title: "Materias", text: "Podés crear, editar o eliminar materias, ajustar colores, código y período, y entrar a objetivos. Es la sección base y conviene revisarla cada vez que cambia tu cursada." },
+                    { title: "Tipos de tarea", text: "Además de los tipos estándar, podés crear categorías propias con nombre, emoji y colores. Eso mejora mucho la lectura visual si mezclás parciales, lecturas, entregables, clases o trámites en una misma semana." },
+                    { title: "Horarios y modo 3/6 franjas", text: "La definición de franjas cambia cómo se lee toda la app. Tres franjas simplifican; seis franjas dan granularidad. Elegí lo que te represente mejor, no lo que suene más sofisticado." },
+                    { title: "Alertas", text: "Acá calibrás el sistema de urgencia. Vale la pena revisarlo al principio para que el planner te avise ni demasiado tarde ni demasiado pronto." },
+                    { title: "Tema visual", text: "Hueso, Claro, Noche, Pizarrón y Café no cambian funcionalidad, pero sí comodidad. Si pasás mucho tiempo en la app, un tema cómodo puede hacer más agradable el seguimiento diario." },
+                    { title: "Cambios que podés tocar sin miedo", text: "Tema, umbrales de alertas, franjas y objetivos se pueden ir ajustando. La app está pensada para adaptarse a tu rutina, no para obligarte a usar una configuración fija desde el primer día." },
+                ]
+            },
+            {
+                id: "datos", label: "Datos y sincronización", icon: "☁",
+                lead: "La app funciona perfecto en modo local, pero también te da herramientas para respaldar, mover o sincronizar tu información. Entender esta parte evita sustos y te deja elegir qué nivel de seguridad y portabilidad querés tener.",
+                content: [
+                    { title: "Modo local", text: "Por defecto, todo se guarda en el localStorage de este navegador. Es rápido y cómodo, pero queda atado a este dispositivo. Si borrás datos del navegador o cambiás de equipo, necesitás un respaldo o Drive para recuperar tu planner." },
+                    { title: "Conectar Google Drive", text: "Desde 💾 Datos podés iniciar el flujo de Google y hacer que la app sincronice automáticamente un archivo JSON en tu Drive. Es la mejor opción si usás más de un dispositivo o si querés una capa extra de seguridad sin exportar manualmente cada tanto." },
+                    { title: "Estado de guardado", text: "El indicador del header te dice si hay cambios pendientes o si todo ya quedó persistido. Conviene mirarlo cuando hiciste varias modificaciones seguidas o antes de cerrar una sesión larga de edición." },
+                    { title: "Exportar e importar", text: "Exportar crea un respaldo manual completo. Importar permite restaurarlo en otro navegador o dispositivo. Es ideal como copia de seguridad, para migraciones o antes de hacer un reseteo importante." },
+                    { title: "Conflictos entre local y Drive", text: "Si la app detecta versiones distintas, te pregunta cuál querés conservar. No intenta mezclar automáticamente, así que conviene leer bien esa decisión antes de sobrescribir una versión con la otra." },
+                    { title: "Resetear datos sin sorpresas", text: "Podés dejar la app vacía o volver a cargar el modo demo. Como la acción es irreversible salvo respaldo previo, lo sensato es exportar un JSON antes de resetear si tenés la menor duda." },
+                ]
+            },
+            {
+                id: "tips", label: "Consejos y dudas comunes", icon: "💡",
+                lead: "Estas son las confusiones más normales cuando recién arrancás o cuando sentís que el planner no te está mostrando lo que esperabas. Casi siempre la solución está en dos o tres ajustes simples.",
+                content: [
+                    { title: "“No veo materias en Hoy”", text: "Revisá slots, día de la semana y franja actual. La app no inventa qué estudiar: muestra lo que configuraste en la grilla semanal para este día y este horario." },
+                    { title: "“Cargué tareas pero no aparecen alertas”", text: "Verificá que tengan fecha relevante y que estén marcadas como obligatorias. Las opcionales quedan fuera del sistema para no ensuciar prioridades." },
+                    { title: "“Estudié pero el progreso quedó corto”", text: "Puede faltar registrar esa sesión, o quizá la registraste en otra materia/tarea. También recordá que las pausas no se cuentan como tiempo activo." },
+                    { title: "“Tengo demasiadas cosas en progreso”", text: "Usá Kanban para detectar dispersión y Backlog con Solo alertas para recuperar foco. A veces el problema no es de volumen total sino de demasiados frentes abiertos al mismo tiempo." },
+                    { title: "“La app me gusta, pero se siente vacía”", text: "Eso suele pasar cuando faltan fechas, objetivos o checklists. Cuanto más contexto real cargás, más valor devuelve el planner: mejores alertas, mejor priorización y mejor lectura del avance." },
+                    { title: "“¿Qué conviene revisar cada semana?”", text: "Tareas obligatorias próximas, materias por debajo del mínimo, slots que ya no representan tu rutina y sesiones olvidadas de registrar. Esa pequeña revisión semanal mantiene vivo el sistema." },
                 ]
             },
         ];
-
-        function HelpGuide({ onClose }) {
+        function HelpGuide({ onClose, onRestartOnboarding }) {
             const [tab, setTab] = useState("inicio");
             const sec = GUIDE_SECTIONS.find(s => s.id === tab) || GUIDE_SECTIONS[0];
+            const contentRef = useRef(null);
+            useEffect(() => {
+                if (contentRef.current) {
+                    contentRef.current.scrollTop = 0;
+                }
+            }, [tab]);
+
+            // Group sections
+            const GROUP1 = ["inicio", "hoy", "semana", "materias", "sesiones"];
+            const GROUP2 = ["tareas", "alertas", "config"];
+            const GROUP3 = ["datos"];
 
             return e("div", { className: "ov", onClick: onClose },
                 e("div", {
-                    className: "mod",
-                    style: { maxWidth: 720, height: "80vh", display: "flex", flexDirection: "column", padding: 0 },
+                    className: "mod hg-modal",
                     onClick: ev => ev.stopPropagation()
                 },
                     // Header
-                    e("div", {
-                        style: {
-                            display: "flex", alignItems: "center", justifyContent: "space-between",
-                            padding: "18px 24px", borderBottom: "1px solid var(--border)", flexShrink: 0
-                        }
-                    },
-                        e("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
-                            e("span", { style: { fontSize: 22 } }, "?"),
-                            e("span", { style: { fontSize: 16, fontWeight: 700, color: "var(--text0)" } },
-                                "Guía de uso — UAI Planner"
+                    e("div", { className: "hg-header" },
+                        e("div", { className: "hg-header-left" },
+                            e("div", { className: "hg-header-icon" }, "?"),
+                            e("div", null,
+                                e("div", { className: "hg-header-title" }, "Guía de uso — UAI Planner"),
+                                e("div", { className: "hg-header-sub" }, "Documentación completa de todas las funciones")
                             )
                         ),
                         e("button", { className: "mclose", onClick: onClose }, "✕")
                     ),
-                    // Body: sidebar + content
-                    e("div", { style: { display: "flex", flex: 1, overflow: "hidden" } },
+                    // Body
+                    e("div", { className: "hg-body" },
                         // Sidebar
-                        e("div", {
-                            style: {
-                                width: 200, flexShrink: 0, borderRight: "1px solid var(--border)",
-                                overflowY: "auto", padding: "8px 0"
-                            }
-                        },
-                            GUIDE_SECTIONS.map(s => e("button", {
-                                key: s.id,
-                                onClick: () => setTab(s.id),
-                                style: {
-                                    display: "block", width: "100%", textAlign: "left",
-                                    padding: "9px 16px", background: tab === s.id ? "var(--info-bg)" : "transparent",
-                                    border: "none", borderLeft: tab === s.id ? "3px solid var(--accent)" : "3px solid transparent",
-                                    color: tab === s.id ? "var(--info-text)" : "var(--text1)",
-                                    cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: tab === s.id ? 600 : 400,
-                                    transition: "all .12s"
-                                }
-                            }, s.label))
+                        e("div", { className: "hg-sidebar" },
+                            e("div", { className: "hg-sidebar-section" }, "Empezar"),
+                            GROUP1.map(id => {
+                                const s = GUIDE_SECTIONS.find(x => x.id === id);
+                                return e("button", {
+                                    key: id,
+                                    className: "hg-nav-btn" + (tab === id ? " active" : ""),
+                                    onClick: () => setTab(id)
+                                },
+                                    e("span", { className: "hg-nav-icon" }, s.icon),
+                                    s.label
+                                );
+                            }),
+                            e("div", { className: "hg-sidebar-section" }, "Funciones"),
+                            GROUP2.map(id => {
+                                const s = GUIDE_SECTIONS.find(x => x.id === id);
+                                return e("button", {
+                                    key: id,
+                                    className: "hg-nav-btn" + (tab === id ? " active" : ""),
+                                    onClick: () => setTab(id)
+                                },
+                                    e("span", { className: "hg-nav-icon" }, s.icon),
+                                    s.label
+                                );
+                            }),
+                            e("div", { className: "hg-sidebar-section" }, "Datos"),
+                            GROUP3.map(id => {
+                                const s = GUIDE_SECTIONS.find(x => x.id === id);
+                                return e("button", {
+                                    key: id,
+                                    className: "hg-nav-btn" + (tab === id ? " active" : ""),
+                                    onClick: () => setTab(id)
+                                },
+                                    e("span", { className: "hg-nav-icon" }, s.icon),
+                                    s.label
+                                );
+                            })
                         ),
                         // Content
-                        e("div", { style: { flex: 1, overflowY: "auto", padding: "24px 28px" } },
-                            e("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--text0)", marginBottom: 20 } },
-                                sec.label
+                        e("div", { className: "hg-content", ref: contentRef },
+                            e("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 10 } },
+                                e("span", { style: { fontSize: 22 } }, sec.icon),
+                                e("div", { className: "hg-section-title" }, sec.label)
                             ),
-                            sec.content.map((item, i) => e("div", { key: i, style: { marginBottom: 20 } },
-                                e("div", {
-                                    style: {
-                                        fontSize: 12, fontWeight: 600, color: "var(--text0)",
-                                        marginBottom: 5, display: "flex", alignItems: "center", gap: 6
-                                    }
-                                },
-                                    e("span", {
-                                        style: {
-                                            width: 20, height: 20, borderRadius: "50%", background: "var(--info-bg)",
-                                            color: "var(--info-text)", fontSize: 10, fontWeight: 700,
-                                            display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0
-                                        }
-                                    }, i + 1),
-                                    item.title
-                                ),
-                                e("div", {
-                                    style: {
-                                        fontSize: 12, color: "var(--text1)", lineHeight: 1.7,
-                                        paddingLeft: 26,
-                                    }
-                                }, item.text)
+                            sec.lead && e("div", { className: "hg-section-lead" }, sec.lead),
+                            e("div", { className: "hg-items-grid" },
+                            sec.content.map((item, i) => e("div", { key: i, className: "hg-item" },
+                                e("div", { className: "hg-item-num" }, i + 1),
+                                e("div", { style: { flex: 1 } },
+                                    e("div", { className: "hg-item-title" }, item.title),
+                                    e("div", { className: "hg-item-text" }, item.text)
+                                )
                             )),
-                            // Footer tip
-                            e("div", {
-                                style: {
-                                    marginTop: 16, padding: "10px 14px", background: "var(--bg2)",
-                                    borderRadius: 6, fontSize: 11, color: "var(--text3)", fontStyle: "italic"
-                                }
-                            },
-                                "💡 Podés volver a esta guía en cualquier momento con el botón ? del header."
+                            ), // end items grid
+                            e("div", { className: "hg-tip" },
+                                e("span", { className: "hg-tip-icon" }, "💡"),
+                                e("span", null,
+                                    "Podés volver a esta guía en cualquier momento con el botón ",
+                                    e("span", { className: "hg-badge" }, "?"),
+                                    " del header. También está disponible en la pantalla de bienvenida."
+                                )
                             )
                         )
                     ),
                     // Footer
-                    e("div", {
-                        style: {
-                            padding: "14px 24px", borderTop: "1px solid var(--border)",
-                            display: "flex", justifyContent: "flex-end", flexShrink: 0
-                        }
-                    },
-                        e("button", { className: "savebtn", onClick: onClose }, "Entendido →")
+                    e("div", { className: "hg-footer" },
+                        e("span", { className: "hg-footer-note" }, sec.content.length + " temas en esta sección · " + GUIDE_SECTIONS.length + " secciones en total"),
+                        e("div", { style: { display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" } },
+                            onRestartOnboarding && e("button", { className: "cancbtn", onClick: onRestartOnboarding, title: "Volver a ver la bienvenida sin borrar tus datos" }, "Reiniciar onboarding"),
+                            e("button", { className: "savebtn", onClick: onClose }, "Entendido →")
+                        )
                     )
                 )
             );
@@ -7753,7 +8724,7 @@ e("div", { className: "calgrid" },
            ══════════════════════════════════════════════════════════════════════ */
         /* ─── APP ── */
         function App() {
-            const saved = localStorage.getItem("uai-theme") || "hueso";
+            const saved = localStorage.getItem("uai-theme") || "noche";
             const [themeId, setThemeId] = useState(saved);
             // App mode: "welcome" | "local" | "drive"
             const [appMode, setAppMode] = useState(() => {
@@ -7798,7 +8769,10 @@ e("div", { className: "calgrid" },
             const [franjaMode, setFranjaMode] = useState(() => getFranjaMode());
             const [franjas, setFranjas] = useState(() => getFranjas());
             const [alertas, setAlertas] = useState(() => getAlertas());
-            const [chromePinned, setChromePinned] = useState(() => localStorage.getItem("uai-chrome-pinned") === "true");
+            const [chromePinned, setChromePinned] = useState(() => {
+                const saved = localStorage.getItem("uai-chrome-pinned");
+                return saved === null ? true : saved === "true";
+            });
             const [chromeHover, setChromeHover] = useState(false);
             const appRef = useRef(null);
             const chromeShellRef = useRef(null);
@@ -7869,6 +8843,12 @@ e("div", { className: "calgrid" },
             function closeHelp() {
                 localStorage.setItem("uai-guia-vista", "true");
                 setShowHelp(false);
+            }
+            function restartOnboarding() {
+                localStorage.removeItem("uai-guia-vista");
+                localStorage.setItem(LS_MODE_KEY, "welcome");
+                setShowHelp(false);
+                setAppMode("welcome");
             }
             const autoSaveTimer = useRef(null);
             // Pomodoro state
@@ -8101,7 +9081,7 @@ e("div", { className: "calgrid" },
             function enterLocal() {
                 localStorage.setItem(LS_MODE_KEY, "local");
                 setAppMode("local");
-                if (!localStorage.getItem("uai-guia-vista")) setShowHelp(true);
+                setShowHelp(true);
                 const saved = loadFromLS(null);
                 if (saved) { setData(saved); lastExp.current = hashData(saved); }
                 else { setData(EMPTY_DATA); lastExp.current = hashData(EMPTY_DATA); }
@@ -8111,6 +9091,7 @@ e("div", { className: "calgrid" },
                 setData(SAMPLE);
                 setIsDemo(true);
                 setAppMode("local"); // show the planner but don't save
+                setShowHelp(true);
             }
             function startPomoFromTask(task) {
                 setPomoSession({ materiaId: task.materiaId, tareaId: task.id });
@@ -8211,12 +9192,15 @@ e("div", { className: "calgrid" },
 
             // Show welcome screen
             if (appMode === "welcome") {
-                return e(WelcomeScreen, {
-                    onLocal: enterLocal,
-                    onDrive: () => handleDriveConnect(true),
-                    onDemo: enterDemo,
-                    expiredMsg: syncMsg && syncMsg.includes("expiró") ? syncMsg : null
-                });
+                return e(React.Fragment, null,
+                    e(WelcomeScreen, {
+                        onLocal: enterLocal,
+                        onDemo: enterDemo,
+                        onShowHelp: () => setShowHelp(true),
+                        expiredMsg: syncMsg && syncMsg.includes("expiró") ? syncMsg : null
+                    }),
+                    showHelp && e(HelpGuide, { onClose: closeHelp, onRestartOnboarding: restartOnboarding })
+                );
             }
 
             return e("div", { ref: appRef, className: "app " + (chromeExpanded ? "chrome-open" : "chrome-hidden") },
@@ -8406,7 +9390,7 @@ e("div", { className: "calgrid" },
                     onResetSample: doResetSample,
                     onClose: () => { setResetModal(false); setResetConfirm(null); }
                 }),
-                showHelp && e(HelpGuide, { onClose: closeHelp }),
+                showHelp && e(HelpGuide, { onClose: closeHelp, onRestartOnboarding: restartOnboarding }),
                 editObjetivoM && e("div", { className: "ov", onClick: () => setEditObjetivoM(null) },
                     e("div", { className: "mod", style: { maxWidth: 640 }, onClick: ev => ev.stopPropagation() },
                         e("div", { className: "mhd" },
@@ -8458,10 +9442,9 @@ e("div", { className: "calgrid" },
             );
         }
 
-        applyTheme(localStorage.getItem("uai-theme") || "hueso");
+        applyTheme(localStorage.getItem("uai-theme") || "noche");
         ReactDOM.render(React.createElement(App), document.getElementById("root"));
 
     </script>
 </body>
-
 </html>
