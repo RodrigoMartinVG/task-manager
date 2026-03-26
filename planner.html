@@ -254,7 +254,8 @@
         .app {
             display: flex;
             flex-direction: column;
-            min-height: 100vh
+            min-height: 100vh;
+            --chrome-offset: 76px
         }
 
         .hdr {
@@ -267,6 +268,176 @@
             position: sticky;
             top: 0;
             z-index: 100
+        }
+
+        .chrome-shell {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 320;
+            pointer-events: auto;
+            --chrome-peek-height: 26px;
+            transform: translateY(calc(-100% + var(--chrome-peek-height)));
+            transition: transform .24s ease, box-shadow .22s ease;
+            will-change: transform;
+        }
+
+        .chrome-shell.open {
+            transform: translateY(0);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, .08)
+        }
+
+        .chrome-shell.collapsed {
+            transform: translateY(calc(-100% + var(--chrome-peek-height)));
+            box-shadow: none;
+            background: transparent;
+        }
+
+        .chrome-panel {
+            position: relative;
+            background: var(--bg1);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .chrome-shell.collapsed .chrome-panel {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .chrome-panel .hdr {
+            position: relative;
+            top: 0;
+            z-index: 1;
+            padding-left: 18px;
+            padding-right: 18px;
+            min-height: 66px
+        }
+
+        .chrome-peek {
+            height: var(--chrome-peek-height);
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            cursor: n-resize;
+            overflow: visible;
+            position: relative;
+            width: max-content;
+            min-width: 0;
+            margin: 0 auto;
+            padding: 0;
+            appearance: none;
+            -webkit-appearance: none;
+            box-shadow: none;
+            outline: none;
+        }
+
+        .chrome-peek::before {
+            content: none;
+        }
+
+        .chrome-peek:hover,
+        .chrome-peek:focus-visible {
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .chrome-peek-pill {
+            position: relative;
+            margin-top: 0;
+            min-width: min(320px, 62vw);
+            height: 24px;
+            padding: 0 34px;
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 18px 18px;
+            background: linear-gradient(to bottom, color-mix(in srgb, var(--bg1) 97%, white 3%), color-mix(in srgb, var(--bg1) 89%, black 11%));
+            box-shadow: 0 8px 20px rgba(0, 0, 0, .10);
+            color: var(--text2);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 11px;
+            line-height: 1;
+            letter-spacing: .03em;
+            transform: translateY(-1px);
+            transition: transform .18s ease, color .16s ease, background .18s ease, box-shadow .18s ease, opacity .16s ease;
+        }
+
+        .chrome-peek-arrow {
+            font-size: 12px;
+            opacity: .8;
+            transform: translateY(-1px);
+        }
+
+        .chrome-peek-label {
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: .08em;
+        }
+
+        .chrome-shell.collapsed .chrome-peek-pill {
+            animation: chromePeekSlide 3.4s ease-in-out infinite;
+        }
+
+        .chrome-shell:hover .chrome-peek-pill,
+        .chrome-shell:focus-within .chrome-peek-pill {
+            color: var(--text0);
+            background: linear-gradient(to bottom, var(--bg1), color-mix(in srgb, var(--bg1) 86%, black 14%));
+            box-shadow: 0 12px 24px rgba(0, 0, 0, .14)
+        }
+
+        .chrome-shell.open .chrome-peek-pill {
+            opacity: .94;
+        }
+
+        @keyframes chromePeekSlide {
+            0%, 64%, 100% {
+                transform: translateY(-1px);
+            }
+            72% {
+                transform: translateY(5px);
+            }
+            82% {
+                transform: translateY(2px);
+            }
+        }
+
+        .chrome-pin-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            border: 1px solid var(--border);
+            background: var(--bg2);
+            color: var(--text1);
+            font-family: inherit;
+            font-size: 17px;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
+            transition: transform .16s ease, background .16s ease, color .16s ease, box-shadow .16s ease;
+            flex: 0 0 auto;
+        }
+
+        .chrome-pin-btn:hover {
+            color: var(--text0);
+            background: var(--bg1);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, .09);
+        }
+
+        .chrome-pin-btn.pin {
+            color: var(--accent1);
+        }
+
+        .chrome-open .main,
+        .chrome-hidden .main {
+            padding-top: var(--chrome-offset, 76px)
         }
 
         .logo {
@@ -291,21 +462,89 @@
             padding: 0;
             position: absolute;
             left: 50%;
-            transform: translateX(-50%)
+            transform: translateX(-50%);
+            max-width: calc(100vw - 360px);
+            flex-wrap: nowrap
         }
 
         .nb {
             background: transparent;
             border: none;
             color: var(--text2);
-            padding: 5px 16px;
+            padding: 5px 14px;
             border-radius: 5px;
             cursor: pointer;
             font-family: inherit;
             font-size: 12px;
             font-weight: 500;
             transition: all .18s;
-            white-space: nowrap
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            line-height: 1
+        }
+
+        .nb-ico {
+            font-size: 14px;
+            line-height: 1;
+            flex-shrink: 0
+        }
+
+        .nb-label {
+            display: inline
+        }
+
+        .nb-short {
+            display: none
+        }
+
+        .nb-badge {
+            margin-left: 5px;
+            background: var(--err-text);
+            color: #fff;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 5px;
+            vertical-align: middle;
+            line-height: 1
+        }
+
+        .nav-alert-wrap {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 10px
+        }
+
+        .nav-alert-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            min-width: 34px;
+            height: 28px;
+            padding: 0 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--bg1);
+            color: var(--text0);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1
+        }
+
+        .nav-alert-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--err-text);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--err-text) 18%, transparent)
+        }
+
+        .nav-alert-zero .nav-alert-dot {
+            background: var(--ok-text);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok-text) 18%, transparent)
         }
 
         .nb:hover {
@@ -551,11 +790,164 @@
             color: var(--text0)
         }
 
+        .newbtn,
+        .importbtn {
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px
+        }
+
+        .btn-full {
+            display: inline
+        }
+
+        .btn-short {
+            display: none
+        }
+
         .main {
             padding: 18px 22px;
             max-width: 1400px;
             margin: 0 auto;
             width: 100%
+        }
+
+        @media (max-width: 1260px) {
+            .hdr {
+                flex-wrap: nowrap;
+                padding-right: 14px;
+                padding-left: 14px;
+                gap: 8px
+            }
+
+            .logo {
+                flex: 0 0 auto
+            }
+
+            .nav {
+                position: static;
+                left: auto;
+                transform: none;
+                order: 0;
+                width: auto;
+                max-width: none;
+                margin: 0 6px;
+                justify-content: center;
+                flex: 1 1 auto;
+                min-width: 0
+            }
+
+            .periodo-sel {
+                flex: 0 1 auto;
+                min-width: 0
+            }
+
+            .subtitle {
+                margin-right: 0
+            }
+
+            .hdr-btns {
+                margin-left: 0;
+                flex: 0 0 auto
+            }
+        }
+
+        @media (max-width: 1180px) {
+            .nb {
+                padding: 5px 8px
+            }
+
+            .nb-label {
+                display: none
+            }
+
+            .nb-short {
+                display: inline
+            }
+
+            .nav {
+                gap: 4px
+            }
+
+            .periodo-trigger {
+                max-width: 180px
+            }
+
+            .responsive-cnt {
+                display: none
+            }
+
+            .btn-full {
+                display: none
+            }
+
+            .btn-short {
+                display: inline
+            }
+
+            .newbtn,
+            .importbtn {
+                min-width: 36px;
+                padding-left: 10px;
+                padding-right: 10px
+            }
+        }
+
+        @media (max-width: 860px) {
+            .hdr {
+                gap: 6px;
+                padding-right: 10px;
+                padding-left: 10px
+            }
+
+            .logo {
+                margin-right: 0;
+                font-size: 14px
+            }
+
+            .hdr-btns {
+                gap: 4px
+            }
+
+            .nb {
+                padding: 4px 7px;
+                font-size: 11px
+            }
+
+            .nb-badge {
+                margin-left: 4px;
+                font-size: 8px;
+                padding: 1px 4px
+            }
+
+            .nav-alert-wrap {
+                margin-left: 6px
+            }
+
+            .nav-alert-pill {
+                height: 24px;
+                min-width: 28px;
+                padding: 0 8px;
+                gap: 6px;
+                font-size: 11px
+            }
+
+            .nav-alert-dot {
+                width: 7px;
+                height: 7px
+            }
+
+            .periodo-trigger {
+                max-width: 140px
+            }
+
+            .fbar {
+                gap: 8px;
+                padding-left: 14px;
+                padding-right: 14px
+            }
         }
 
         .badge {
@@ -1643,6 +2035,108 @@
             font-size: 11px
         }
 
+        .urgent-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            z-index: 120
+        }
+
+        .urgent-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid var(--err-border);
+            background: var(--err-bg);
+            color: var(--err-text);
+            border-radius: 999px;
+            padding: 5px 10px;
+            font: inherit;
+            font-size: 11px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
+            white-space: nowrap
+        }
+
+        .urgent-chip:hover {
+            filter: brightness(1.02)
+        }
+
+        .urgent-chip-ico {
+            font-size: 12px;
+            line-height: 1
+        }
+
+        .urgent-chip-count {
+            font-weight: 700
+        }
+
+        .urgent-chip-caret {
+            font-size: 9px;
+            opacity: .75;
+            margin-left: 2px
+        }
+
+        .urgent-pop {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: min(760px, calc(100vw - 44px));
+            background: var(--bg1);
+            border: 1px solid var(--border2);
+            border-radius: 10px;
+            box-shadow: 0 14px 36px rgba(0,0,0,.22);
+            padding: 10px;
+            z-index: 999
+        }
+
+        .urgent-pop-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px
+        }
+
+        .urgent-pop-title {
+            font-weight: 700;
+            color: var(--text0)
+        }
+
+        .urgent-pop-close {
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text2);
+            width: 26px;
+            height: 26px;
+            cursor: pointer;
+            font-family: inherit;
+            line-height: 1
+        }
+
+        .urgent-pop-close:hover {
+            color: var(--text0);
+            border-color: var(--border2)
+        }
+
+        .urgent-pop-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px
+        }
+
+        .urgent-pop-pill {
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--bg0);
+            color: var(--text2);
+            white-space: nowrap
+        }
+
         .mode-indicator {
             display: flex;
             align-items: center;
@@ -2604,7 +3098,7 @@
         window.addEventListener('load', procesarImportacionIncremental);
 
 
-        const { useState, useMemo, useEffect, useRef } = React;
+        const { useState, useMemo, useEffect, useLayoutEffect, useRef } = React;
         const e = React.createElement;
 
         /* ══════════════════════════════════════════════════════════════════════
@@ -2981,6 +3475,42 @@
             { id: "dom", label: "Dom" },
         ];
         const DIA_JS_TO_ID = ["dom", "lun", "mar", "mie", "jue", "vie", "sab"];
+        const PLANNER_TIMEZONE = "America/Argentina/Ushuaia";
+        const WEEKDAY_EN_TO_ID = { Sun: "dom", Mon: "lun", Tue: "mar", Wed: "mie", Thu: "jue", Fri: "vie", Sat: "sab" };
+
+        function getPlannerNowParts(date = new Date()) {
+            try {
+                const parts = new Intl.DateTimeFormat("en-US", {
+                    timeZone: PLANNER_TIMEZONE,
+                    weekday: "short",
+                    year: "numeric",
+                    month: "numeric",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hourCycle: "h23"
+                }).formatToParts(date);
+                const out = {};
+                parts.forEach(p => { if (p.type !== "literal") out[p.type] = p.value; });
+                return {
+                    weekdayId: WEEKDAY_EN_TO_ID[out.weekday] || DIA_JS_TO_ID[date.getDay()],
+                    year: parseInt(out.year, 10) || date.getFullYear(),
+                    month: Math.max(1, parseInt(out.month, 10) || (date.getMonth() + 1)),
+                    day: parseInt(out.day, 10) || date.getDate(),
+                    hour: parseInt(out.hour, 10) || 0,
+                    minute: parseInt(out.minute, 10) || 0
+                };
+            } catch (e) {
+                return {
+                    weekdayId: DIA_JS_TO_ID[date.getDay()],
+                    year: date.getFullYear(),
+                    month: date.getMonth() + 1,
+                    day: date.getDate(),
+                    hour: date.getHours(),
+                    minute: date.getMinutes()
+                };
+            }
+        }
 
         function getFranjaMode() {
             const mode = localStorage.getItem("uai-franjas-mode");
@@ -3080,20 +3610,21 @@
             localStorage.setItem("uai-franjas-mode", String(mode));
         }
 
-        /* Devuelve el id de la franja actual según la hora del sistema */
-        function getMomentoActual() {
-            const h = new Date().getHours();
+        /* Devuelve el id de la franja actual según la hora/minuto en la zona horaria configurada */
+        function getMomentoActual(date = new Date()) {
+            const now = getPlannerNowParts(date);
+            const hm = now.hour + (now.minute / 60);
             const f = getFranjas();
             for (const [id, franja] of Object.entries(f)) {
-                if (h >= franja.inicio && h < franja.fin) return id;
+                if (hm >= franja.inicio && hm < franja.fin) return id;
             }
             const fallback = getFranjaMode() === 6 ? "noche2" : "noche";
             return fallback;
         }
 
         /* Devuelve el id del día actual ("lun"|"mar"|...) */
-        function getDiaActual() {
-            return DIA_JS_TO_ID[new Date().getDay()];
+        function getDiaActual(date = new Date()) {
+            return getPlannerNowParts(date).weekdayId;
         }
 
         function getMateriasParaHoy(materias, slots) {
@@ -3244,7 +3775,7 @@
                 return () => document.removeEventListener("mousedown", handler);
             }, [onClose]);
         }
-        /* ─── URGENT BANNER ── */
+        /* ─── URGENT CHIP ── */
         function UrgentBanner({ urgentTasks, alertas, mmap, onSelTask }) {
             const [open, setOpen] = useState(false);
             const ref = useRef(null);
@@ -3254,7 +3785,7 @@
             const reds = urgentTasks.filter(t => getAlertColor(t, alertas) === "red");
             const yellows = urgentTasks.filter(t => getAlertColor(t, alertas) === "yellow");
             const greens = urgentTasks.filter(t => getAlertColor(t, alertas) === "green");
-            
+
             const soverdue = urgentTasks.filter(t => getAlertColor(t, alertas) === "start_overdue");
             const snow = urgentTasks.filter(t => getAlertColor(t, alertas) === "start_now");
             const ssoon = urgentTasks.filter(t => getAlertColor(t, alertas) === "start_soon");
@@ -3269,91 +3800,105 @@
             if (ssoon.length) parts.push(`🔔 ${ssoon.length} por empezar`);
             if (greens.length) parts.push(`🟢 ${greens.length} en radar`);
 
-            return e("div", { ref, style: { position: "relative", zIndex: 50 } },
-                e("div", {
-                    className: "errbanner",
-                    style: {
-                        background: wc.bg, borderColor: wc.border, color: wc.text,
-                        cursor: "pointer", display: "flex", alignItems: "center", gap: 8, userSelect: "none"
-                    },
-                    onClick: () => setOpen(!open)
-                },
-                    e("span", { style: { flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, parts.join(" · ")),
-                    e("span", {
-                        style: {
-                            fontSize: 11, transition: "transform .2s",
-                            display: "inline-block", transform: open ? "rotate(180deg)" : "rotate(0deg)"
-                        }
-                    }, "▼")
-                ),
-                open && e("div", {
-                    style: {
-                        position: "absolute", top: "100%", left: 0, right: 0,
-                        background: "var(--bg1)", border: "1px solid var(--border2)",
-                        borderTop: "none", borderRadius: "0 0 8px 8px",
-                        boxShadow: "0 8px 24px rgba(0,0,0,.2)",
-                        maxHeight: 320, overflowY: "auto", padding: 8
-                    }
-                },
-                    [...reds, ...yellows, ...soverdue, ...snow, ...ssoon, ...greens].map(t => {
-                        const today = new Date(); today.setHours(0, 0, 0, 0);
-                        const ac = getAlertColor(t, alertas);
-                        const ac2 = ALERT_COLORS[ac];
-                        
-                        let label = "";
-                        let dateStr = "";
-                        
-                        if (["red", "yellow", "green"].includes(ac)) {
-                            const d = new Date(t.fechaLimite + "T00:00:00");
-                            const diff = Math.round((d - today) / (864e5));
-                            label = diff < 0 ? `Vencida hace ${Math.abs(diff)}d` : diff === 0 ? "Hoy" : diff === 1 ? "Mañana" : `En ${diff}d`;
-                            dateStr = t.fechaLimite ? fd(t.fechaLimite) : "";
-                        } else {
-                            const d = new Date(t.fechaInicio + "T00:00:00");
-                            const diff = Math.round((d - today) / (864e5));
-                            label = diff < 0 ? `Debió empezar hace ${Math.abs(diff)}d` : diff === 0 ? "Empezar hoy" : diff === 1 ? "Empieza mañana" : `Empieza en ${diff}d`;
-                            dateStr = t.fechaInicio ? fd(t.fechaInicio) : "";
-                        }
+            const summary = parts.join(" · ");
+            const total = urgentTasks.length;
 
-                        const mat = mmap && mmap[t.materiaId];
-                        const horaStr = t.hora ? " · " + t.hora : "";
-                        return e("div", {
-                            key: t.id,
+            return e("div", { ref, className: "urgent-wrap" },
+                e("button", {
+                    type: "button",
+                    className: "urgent-chip",
+                    style: {
+                        background: wc.bg,
+                        borderColor: wc.border,
+                        color: wc.text
+                    },
+                    onClick: () => setOpen(v => !v),
+                    title: summary || `${total} alertas`
+                },
+                    e("span", { className: "urgent-chip-ico", "aria-hidden": "true" }, "▲"),
+                    e("span", { className: "urgent-chip-count" }, `${total}`),
+                    e("span", { className: "urgent-chip-caret", "aria-hidden": "true" }, open ? "▲" : "▼")
+                ),
+                open && e("div", { className: "urgent-pop" },
+                        e("div", { className: "urgent-pop-head" },
+                            e("div", { className: "urgent-pop-title" }, `Alertas urgentes (${total})`),
+                            e("button", {
+                                type: "button",
+                                className: "urgent-pop-close",
+                                onClick: () => setOpen(false),
+                                title: "Cerrar"
+                            }, "×")
+                        ),
+                        summary && e("div", { className: "urgent-pop-summary" },
+                            parts.map((p, i) => e("span", { key: i, className: "urgent-pop-pill" }, p))
+                        ),
+                        e("div", {
                             style: {
-                                display: "flex", alignItems: "center", gap: 10,
-                                padding: "7px 10px", borderRadius: 6, cursor: "pointer",
-                                background: ac2.bg, border: `1px solid ${ac2.border}`,
-                                borderLeft: `3px solid ${ac2.text}`, marginBottom: 4
-                            },
-                            onClick: () => { onSelTask(t.id); setOpen(false); }
+                                maxHeight: 320,
+                                overflowY: "auto",
+                                paddingRight: 2
+                            }
                         },
-                            mat && e("div", {
-                                style: {
-                                    width: 8, height: 8, borderRadius: "50%",
-                                    background: mat.color, flexShrink: 0
+                            [...reds, ...yellows, ...soverdue, ...snow, ...ssoon, ...greens].map(t => {
+                                const today = new Date(); today.setHours(0, 0, 0, 0);
+                                const ac = getAlertColor(t, alertas);
+                                const ac2 = ALERT_COLORS[ac];
+
+                                let label = "";
+                                let dateStr = "";
+
+                                if (["red", "yellow", "green"].includes(ac)) {
+                                    const d = new Date(t.fechaLimite + "T00:00:00");
+                                    const diff = Math.round((d - today) / (864e5));
+                                    label = diff < 0 ? `Vencida hace ${Math.abs(diff)}d` : diff === 0 ? "Hoy" : diff === 1 ? "Mañana" : `En ${diff}d`;
+                                    dateStr = t.fechaLimite ? fd(t.fechaLimite) : "";
+                                } else {
+                                    const d = new Date(t.fechaInicio + "T00:00:00");
+                                    const diff = Math.round((d - today) / (864e5));
+                                    label = diff < 0 ? `Debió empezar hace ${Math.abs(diff)}d` : diff === 0 ? "Empezar hoy" : diff === 1 ? "Empieza mañana" : `Empieza en ${diff}d`;
+                                    dateStr = t.fechaInicio ? fd(t.fechaInicio) : "";
                                 }
-                            }),
-                            e("div", { style: { flex: 1, minWidth: 0 } },
-                                e("div", {
+
+                                const mat = mmap && mmap[t.materiaId];
+                                const horaStr = t.hora ? " · " + t.hora : "";
+                                return e("div", {
+                                    key: t.id,
                                     style: {
-                                        fontSize: 12, fontWeight: 600, color: "var(--text0)",
-                                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
-                                    }
-                                }, t.titulo),
-                                e("div", { style: { fontSize: 10, color: "var(--text2)", marginTop: 1 } },
-                                    [mat?.nombre, dateStr + horaStr].filter(Boolean).join(" · ")
-                                )
-                            ),
-                            e("span", {
-                                style: {
-                                    fontSize: 10, color: ac2.text, fontWeight: 700, flexShrink: 0,
-                                    background: "var(--bg1)", padding: "2px 6px", borderRadius: 3,
-                                    border: `1px solid ${ac2.border}`
-                                }
-                            }, ac2.label + " " + label)
-                        );
-                    })
-                )
+                                        display: "flex", alignItems: "center", gap: 10,
+                                        padding: "7px 10px", borderRadius: 6, cursor: "pointer",
+                                        background: ac2.bg, border: `1px solid ${ac2.border}`,
+                                        borderLeft: `3px solid ${ac2.text}`, marginBottom: 4
+                                    },
+                                    onClick: () => { onSelTask(t.id); setOpen(false); }
+                                },
+                                    mat && e("div", {
+                                        style: {
+                                            width: 8, height: 8, borderRadius: "50%",
+                                            background: mat.color, flexShrink: 0
+                                        }
+                                    }),
+                                    e("div", { style: { flex: 1, minWidth: 0 } },
+                                        e("div", {
+                                            style: {
+                                                fontSize: 12, fontWeight: 600, color: "var(--text0)",
+                                                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+                                            }
+                                        }, t.titulo),
+                                        e("div", { style: { fontSize: 10, color: "var(--text2)", marginTop: 1 } },
+                                            [mat?.nombre, dateStr + horaStr].filter(Boolean).join(" · ")
+                                        )
+                                    ),
+                                    e("span", {
+                                        style: {
+                                            fontSize: 10, color: ac2.text, fontWeight: 700, flexShrink: 0,
+                                            background: "var(--bg1)", padding: "2px 6px", borderRadius: 3,
+                                            border: `1px solid ${ac2.border}`
+                                        }
+                                    }, ac2.label + " " + label)
+                                );
+                            })
+                        )
+                    )
             );
         }
 
@@ -3698,7 +4243,8 @@
 
             return e("div", { className: "sync-wrap", ref },
                 e("button", { className: "datos-btn", onClick: () => setShowSync(!showSync), title: "Gestionar datos" },
-                    "💾 Datos",
+                    e("span", { className: "btn-full" }, "💾 Datos"),
+                    e("span", { className: "btn-short", "aria-hidden": "true" }, "💾"),
                     badgeText && e("span", { className: badgeClass }, badgeText)
                 ),
                 showSync && e(DatosPopover, {
@@ -5801,6 +6347,11 @@ e("div", { className: "calgrid" },
             const [gridLayout, setGridLayout] = useState(() => localStorage.getItem("uai-grid-layout") || "horizontal");
             const [dragSlot, setDragSlot] = useState(null); // {materiaId, fromDia, fromFid}
             const [overSlot, setOverSlot] = useState(null); // "dia-fid"
+            const [, forceClockTick] = useState(0);
+            useEffect(() => {
+                const t = setInterval(() => forceClockTick(Date.now()), 30000);
+                return () => clearInterval(t);
+            }, []);
             const franjasLocal = franjas || getFranjas();
             const dia = getDiaActual();
             const momento = getMomentoActual();
@@ -6139,12 +6690,22 @@ e("div", { className: "calgrid" },
             const [overSlot, setOverSlot] = useState(null); // "dia-fid"
             const franjasLocal = franjas || getFranjas();
             useEffect(() => {
-                const t = setInterval(() => setNow(new Date()), 60000);
-                return () => clearInterval(t);
+                let intervalId = null;
+                const tick = () => setNow(new Date());
+                tick();
+                const msUntilNextMinute = 60000 - ((Date.now()) % 60000) + 50;
+                const timeoutId = setTimeout(() => {
+                    tick();
+                    intervalId = setInterval(tick, 30000);
+                }, msUntilNextMinute);
+                return () => {
+                    clearTimeout(timeoutId);
+                    if (intervalId) clearInterval(intervalId);
+                };
             }, []);
 
-            const dia = getDiaActual();
-            const momento = getMomentoActual();
+            const dia = getDiaActual(now);
+            const momento = getMomentoActual(now);
             // use prop franjas if provided, else read from localStorage
             const franjaIds = Object.keys(franjas);
             const momentoIdx = franjaIds.indexOf(momento);
@@ -6165,10 +6726,12 @@ e("div", { className: "calgrid" },
             }, [sesiones]);
 
             function fmtHora() {
-                return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                const p = getPlannerNowParts(now);
+                return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`;
             }
             const diasLabel = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
             const mesesLabel = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+            const nowParts = getPlannerNowParts(now);
 
             function MateriaCard({ m, badge, badgeColor, onStartPomo, onEditObjetivos }) {
                 const mins = minsSemana[m.id] || 0;
@@ -6229,7 +6792,7 @@ e("div", { className: "calgrid" },
                     e("div", { style: { fontSize: 28, fontWeight: 700, color: "var(--text0)", marginBottom: 2 } }, fmtHora()),
                     e("div", { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 2 } },
                         e("span", { style: { fontSize: 14, color: "var(--text2)" } },
-                            `${diasLabel[now.getDay()]}, ${now.getDate()} de ${mesesLabel[now.getMonth()]} ${now.getFullYear()}`
+                            `${diasLabel[(nowParts.month && nowParts.day) ? ["dom","lun","mar","mie","jue","vie","sab"].indexOf(nowParts.weekdayId) : now.getDay()]}, ${nowParts.day} de ${mesesLabel[nowParts.month - 1]} ${nowParts.year}`
                         ),
                         e("span", { style: { fontSize: 14 } }, (franjasLocal[momento] || {}).emoji || ""),
                         e("button", {
@@ -6979,6 +7542,7 @@ e("div", { className: "calgrid" },
             const [view, setView] = useState(() => localStorage.getItem("uai-last-view") || "hoy");
             const [fm, setFm] = useState("all");
             const [ft, setFt] = useState("all");
+            const [fa, setFa] = useState("all");
             const [calShowInicio, setCalShowInicio] = useState(true);
             const [calShowFin, setCalShowFin] = useState(true);
             const [calM, setCalM] = useState(new Date(2026, 2, 1));
@@ -7005,6 +7569,46 @@ e("div", { className: "calgrid" },
             const [franjaMode, setFranjaMode] = useState(() => getFranjaMode());
             const [franjas, setFranjas] = useState(() => getFranjas());
             const [alertas, setAlertas] = useState(() => getAlertas());
+            const [chromePinned, setChromePinned] = useState(() => localStorage.getItem("uai-chrome-pinned") === "true");
+            const [chromeHover, setChromeHover] = useState(false);
+            const appRef = useRef(null);
+            const chromeShellRef = useRef(null);
+            const chromeExpanded = chromePinned || chromeHover;
+
+            useEffect(() => { localStorage.setItem("uai-chrome-pinned", chromePinned ? "true" : "false"); }, [chromePinned]);
+
+            useLayoutEffect(() => {
+                const appEl = appRef.current;
+                const shellEl = chromeShellRef.current;
+                if (!appEl || !shellEl) return;
+
+                const updateChromeOffset = () => {
+                    const shellHeight = Math.ceil(shellEl.getBoundingClientRect().height);
+                    const peekHeight = parseFloat(getComputedStyle(shellEl).getPropertyValue("--chrome-peek-height")) || 26;
+                    const visibleHeight = chromeExpanded ? shellHeight : 0;
+                    const safeGap = chromeExpanded ? 14 : 22;
+                    appEl.style.setProperty("--chrome-offset", `${Math.max(visibleHeight, 0) + safeGap}px`);
+                };
+
+                updateChromeOffset();
+
+                const ro = new ResizeObserver(updateChromeOffset);
+                ro.observe(shellEl);
+                window.addEventListener("resize", updateChromeOffset);
+                return () => {
+                    ro.disconnect();
+                    window.removeEventListener("resize", updateChromeOffset);
+                };
+            }, [chromeExpanded, view]);
+
+            function showChromeTemporarily() {
+                if (!chromePinned) setChromeHover(true);
+            }
+
+            function scheduleChromeHide() {
+                if (!chromePinned) setChromeHover(false);
+            }
+
             function saveAlertasState(a) { setAlertas(a); saveAlertas(a); }
             function saveFranjas(newFranjas) {
                 setFranjas(newFranjas);
@@ -7345,8 +7949,9 @@ e("div", { className: "calgrid" },
             const filtered = useMemo(() => data.tareas.filter(t =>
                 matIdsFiltradas.has(t.materiaId) &&
                 (fm === "all" || t.materiaId === fm) &&
-                (ft === "all" || t.tipo === ft)
-            ), [data.tareas, matIdsFiltradas, fm, ft]);
+                (ft === "all" || t.tipo === ft) &&
+                (fa === "all" || getAlertColor(t, alertas) !== null)
+            ), [data.tareas, matIdsFiltradas, fm, ft, fa, alertas]);
 
             // años disponibles en los datos
             const aniosDisponibles = useMemo(() => [...new Set(data.materias.map(m => m.anio).filter(Boolean))].sort(), [data.materias]);
@@ -7375,65 +7980,110 @@ e("div", { className: "calgrid" },
                 });
             }
 
-            return e("div", { className: "app" },
-                e("header", { className: "hdr" },
-                    e("span", { className: "logo" }, "◈ UAI Planner"),
+            return e("div", { ref: appRef, className: "app " + (chromeExpanded ? "chrome-open" : "chrome-hidden") },
+                e("div", {
+                    ref: chromeShellRef,
+                    className: "chrome-shell" + (chromeExpanded ? " open" : " collapsed"),
+                    onMouseEnter: showChromeTemporarily,
+                    onMouseLeave: scheduleChromeHide,
+                    onFocus: showChromeTemporarily,
+                    onBlur: (ev) => {
+                        if (!ev.currentTarget.contains(ev.relatedTarget)) scheduleChromeHide();
+                    }
+                },
+                    e("div", {
+                        className: "chrome-panel"
+                    },
+                        e("header", { className: "hdr" },
+                            e("button", {
+                                className: "chrome-pin-btn" + (chromePinned ? " pin" : ""),
+                                onClick: () => setChromePinned(v => !v),
+                                title: chromePinned ? "Desfijar la barra" : "Fijar la barra"
+                            }, chromePinned ? "📌" : "☰"),
+                            e("span", { className: "logo" }, "◈ UAI Planner"),
 
-                    e(PeriodoSelector, { anios: aniosDisponibles, fAnio, fPeriodos, setFAnio, togglePeriodo }),
-                    e("nav", { className: "nav", style: { marginLeft: 24 } },
-                        e("div", { style: { display: "flex", gap: 0, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 7, padding: 3 } },
-                            [["hoy", "◈ Hoy"], ["semana", "◈ Semana"], ["materias", "◉ Materias"]].map(([v, l]) =>
-                                e("button", { key: v, className: "nb " + (view === v ? "nba" : ""), onClick: () => setView(v) }, l)
+                            e(PeriodoSelector, { anios: aniosDisponibles, fAnio, fPeriodos, setFAnio, togglePeriodo }),
+                            e("nav", { className: "nav", style: { marginLeft: 24 } },
+                                e("div", { style: { display: "flex", gap: 0, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 7, padding: 3 } },
+                                    [
+                                        { v: "hoy", icon: "◈", label: "Hoy", short: "H" },
+                                        { v: "semana", icon: "◈", label: "Semana", short: "S" },
+                                        { v: "materias", icon: "◉", label: "Materias", short: "M" }
+                                    ].map(({ v, icon, label, short }) =>
+                                        e("button", { key: v, className: "nb " + (view === v ? "nba" : ""), onClick: () => setView(v), title: label },
+                                            e("span", { className: "nb-ico", "aria-hidden": "true" }, icon),
+                                            e("span", { className: "nb-label" }, label),
+                                            e("span", { className: "nb-short" }, short)
+                                        )
+                                    )
+                                ),
+                                e("div", { style: { width: 16 } }),
+                                e("div", { style: { display: "flex", gap: 0, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 7, padding: 3 } },
+                                    [
+                                        { v: "backlog", icon: "≡", label: "Backlog", short: "B" },
+                                        { v: "kanban", icon: "⬡", label: "Kanban", short: "K" },
+                                        { v: "calendar", icon: "◷", label: "Calendario", short: "C" }
+                                    ].map(({ v, icon, label, short }) =>
+                                        e("button", { key: v, className: "nb " + (view === v ? "nba" : ""), onClick: () => setView(v), title: label },
+                                            e("span", { className: "nb-ico", "aria-hidden": "true" }, icon),
+                                            e("span", { className: "nb-label" }, label),
+                                            e("span", { className: "nb-short" }, short)
+                                        )
+                                    ),
+                                    e("div", { className: "nav-alert-wrap" },
+                                        e("div", {
+                                            className: "nav-alert-pill" + (urgentTasks.length === 0 ? " nav-alert-zero" : ""),
+                                            title: urgentTasks.length === 0 ? "Sin alertas activas" : `${urgentTasks.length} alertas activas`
+                                        },
+                                            e("span", { className: "nav-alert-dot", "aria-hidden": "true" }),
+                                            e("span", null, urgentTasks.length)
+                                        )
+                                    )
+                                )
+                            ),
+                            e("div", { className: "hdr-btns" },
+                                e("button", {
+                                    className: "iconbtn",
+                                    onClick: () => setShowHelp(true),
+                                    title: "Guía de uso"
+                                }, "?"),
+                                e(ConfigBtn, { onOpenSettings: (tab) => setSettings(tab || "materias") }),
+                                e(DatosBtn, {
+                                    data, dirty, onExported, imp,
+                                    driveConnected, syncStatus, autoSave, showSync,
+                                    setShowSync, handleDriveConnect, handleDriveDisconnect,
+                                    handleDriveSaveNow, handleDriveLoad, toggleAutoSave,
+                                    onReset: () => setResetModal(true), userEmail
+                                })
                             )
                         ),
-                        e("div", { style: { width: 16 } }),
-                        e("div", { style: { display: "flex", gap: 0, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 7, padding: 3 } },
-                            [["backlog", "≡ Backlog"], ["kanban", "⬡ Kanban"], ["calendar", "◷ Calendario"]].map(([v, l]) =>
-                                e("button", { key: v, className: "nb " + (view === v ? "nba" : ""), onClick: () => setView(v) },
-                                    l,
-                                    v === "backlog" && urgentTasks.length > 0 && e("span", {
-                                        style: {
-                                            marginLeft: 5, background: "var(--err-text)", color: "#fff",
-                                            borderRadius: 8, fontSize: 9, fontWeight: 700,
-                                            padding: "1px 5px", verticalAlign: "middle"
-                                        }
-                                    }, urgentTasks.length)
+                        impErr && e("div", { className: "errbanner" }, "⚠ " + impErr),
+                        !["hoy", "semana", "materias"].includes(view) && e("div", { className: "fbar" },
+                            e("select", { value: fm, onChange: ev => setFm(ev.target.value) },
+                                e("option", { value: "all" }, "Todas las materias"),
+                                materiasFiltradas.map(m => e("option", { key: m.id, value: m.id }, m.nombre + (periodoTag(m) ? " — " + periodoTag(m) : "")))
+                            ),
+                            e("select", { value: ft, onChange: ev => setFt(ev.target.value) },
+                                e("option", { value: "all" }, "Todos los tipos"),
+                                tipos.map(t => e("option", { key: t.id, value: t.id }, t.icon + " " + t.label))
+                            ),
+                            e("label", { className: "chklabel", style: { display: "inline-flex", alignItems: "center", gap: 8, padding: "0 10px", height: 36, border: "1px solid var(--line)", borderRadius: 10, background: "var(--card)" } },
+                                e("input", { type: "checkbox", checked: fa === "only", onChange: ev => setFa(ev.target.checked ? "only" : "all") }),
+                                e("span", null, "Solo alertas")
+                            ),
+                            e("span", { className: "cnt responsive-cnt" }, filtered.length + " tareas"),
+                            e("div", { style: { display: "flex", gap: 8, marginLeft: "auto" } },
+                                e("button", { className: "newbtn", onClick: () => setForm({}) },
+                                    e("span", { className: "btn-full" }, "+ Nueva tarea"),
+                                    e("span", { className: "btn-short" }, "+")
+                                ),
+                                e("button", { className: "importbtn", onClick: () => setImportTasksOpen(true) },
+                                    e("span", { className: "btn-full" }, "↑ Importar tareas"),
+                                    e("span", { className: "btn-short" }, "↑")
                                 )
                             )
                         )
                     ),
-                    e("div", { className: "hdr-btns" },
-                        e("button", {
-                            className: "iconbtn",
-                            onClick: () => setShowHelp(true),
-                            title: "Guía de uso"
-                        }, "?"),
-                        e(ConfigBtn, { onOpenSettings: (tab) => setSettings(tab || "materias") }),
-                        e(DatosBtn, {
-                            data, dirty, onExported, imp,
-                            driveConnected, syncStatus, autoSave, showSync,
-                            setShowSync, handleDriveConnect, handleDriveDisconnect,
-                            handleDriveSaveNow, handleDriveLoad, toggleAutoSave,
-                            onReset: () => setResetModal(true), userEmail
-                        })
-                    )
-                ),
-                impErr && e("div", { className: "errbanner" }, "⚠ " + impErr),
-                e(UrgentBanner, { urgentTasks, alertas, mmap, onSelTask: id => { setSelId(id); } }),
-                !["hoy", "semana", "materias"].includes(view) && e("div", { className: "fbar" },
-                    e("select", { value: fm, onChange: ev => setFm(ev.target.value) },
-                        e("option", { value: "all" }, "Todas las materias"),
-                        materiasFiltradas.map(m => e("option", { key: m.id, value: m.id }, m.nombre + (periodoTag(m) ? " — " + periodoTag(m) : "")))
-                    ),
-                    e("select", { value: ft, onChange: ev => setFt(ev.target.value) },
-                        e("option", { value: "all" }, "Todos los tipos"),
-                        tipos.map(t => e("option", { key: t.id, value: t.id }, t.icon + " " + t.label))
-                    ),
-                    e("span", { className: "cnt" }, filtered.length + " tareas"),
-                    e("div", { style: { display: "flex", gap: 8, marginLeft: "auto" } },
-                        e("button", { className: "newbtn", onClick: () => setForm({}) }, "+ Nueva tarea"),
-                        e("button", { className: "importbtn", onClick: () => setImportTasksOpen(true) }, "↑ Importar tareas")
-                    )
                 ),
                 e("div", { className: "main" },
                     view === "hoy" && e(HoyView, {
