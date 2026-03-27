@@ -1626,7 +1626,31 @@
             }
         }
 
-        @media (max-width: 1360px) {
+        @media (max-width: 1320px) {
+            .hdr {
+                gap: 6px;
+            }
+
+            .nav {
+                gap: 4px
+            }
+
+            .nb {
+                padding: 5px 10px
+            }
+
+            .periodo-trigger {
+                max-width: 180px
+            }
+
+            .newbtn,
+            .importbtn {
+                padding-left: 11px;
+                padding-right: 11px
+            }
+        }
+
+        @media (max-width: 1220px) {
             .nb {
                 padding: 5px 8px
             }
@@ -1640,19 +1664,11 @@
             }
 
             .nav {
-                gap: 4px
+                gap: 2px
             }
 
             .periodo-trigger {
                 max-width: 160px
-            }
-
-            .hdr {
-                gap: 6px;
-            }
-
-            .nav {
-                gap: 2px;
             }
 
             .responsive-cnt {
@@ -4222,6 +4238,21 @@
 
         function isEmptyData(data) {
             return !data?.tareas?.length && !data?.materias?.length;
+        }
+
+        function hasRealPlannerData(data) {
+            return !!data && !isEmptyData(data) && !isSampleData(data);
+        }
+
+        function hasAnyRealPlannerData(...datasets) {
+            return datasets.some(hasRealPlannerData);
+        }
+
+        function getPlannerDataKind(data) {
+            if (!data) return "none";
+            if (isEmptyData(data)) return "empty";
+            if (isSampleData(data)) return "demo";
+            return "real";
         }
 
         const EMPTY_DATA = { materias: [], tipos: DEFAULT_TIPOS, tareas: [], sesiones: [] };
@@ -8154,7 +8185,7 @@ e("div", { className: "calgrid" },
            12. PANTALLAS DE ESTADO
            ══════════════════════════════════════════════════════════════════════ */
         /* ─── WELCOME SCREEN ── */
-        function WelcomeScreen({ onLocal, onDemo, onShowHelp, expiredMsg }) {
+        function WelcomeScreen({ onLocal, onDemo, onShowHelp, expiredMsg, hasExistingData, onExit }) {
             const [step, setStep] = useState("welcome");
             const [animating, setAnimating] = useState(false);
             const [currentTheme, setCurrentTheme] = useState(localStorage.getItem("uai-theme") || "noche");
@@ -8304,7 +8335,13 @@ e("div", { className: "calgrid" },
                     step === "dataset" && e("div", { className: "ob-card" },
                         e("div", { className: "ob-card-title" }, "Elegí tu forma de arranque"),
                         e("div", { className: "ob-card-desc" },
-                            "Elegís cómo entrar por primera vez y listo. En cuanto entres, la app te abre la guía completa para que no tengas que adivinar nada ni perder tiempo buscando dónde está cada cosa."
+                            hasExistingData
+                                ? "Ya venías usando este planner. Podés recorrer la bienvenida otra vez, volver a la app sin tocar nada o elegir una opción que cambie tu estado actual con confirmación previa."
+                                : "Elegís cómo entrar por primera vez y listo. En cuanto entres, la app te abre la guía completa para que no tengas que adivinar nada ni perder tiempo buscando dónde está cada cosa."
+                        ),
+                        hasExistingData && e("div", { className: "ob-inline-hint", style: { marginBottom: 14 } },
+                            e("strong", null, "Ojo:"),
+                            " si elegís empezar vacío o cargar demo y eso cambia el estado actual del planner, se te va a pedir confirmación antes de aplicar el reemplazo."
                         ),
                         e("div", { className: "ob-section-label" }, "Elegí una opción"),
                         e("button", { className: "ob-opt pri-opt", onClick: () => onLocal() },
@@ -8314,7 +8351,7 @@ e("div", { className: "calgrid" },
                                     e("div", { className: "ob-opt-title" }, "Empezar rápido en modo local"),
                                     e("span", { className: "ob-opt-tag" }, "recomendado")
                                 ),
-                                e("div", { className: "ob-opt-desc" }, "Entrás ya mismo a la app con tu planner vacío para empezar a cargar materias, horarios y tareas."),
+                                e("div", { className: "ob-opt-desc" }, hasExistingData ? "Crea un planner vacío y reemplaza el estado actual solo si lo confirmás." : "Entrás ya mismo a la app con tu planner vacío para empezar a cargar materias, horarios y tareas."),
                                 e("small", null, "Tus datos quedan guardados en este navegador. Después podés exportar, importar o sincronizar con Google Drive desde 💾 Datos.")
                             )
                         ),
@@ -8325,7 +8362,7 @@ e("div", { className: "calgrid" },
                                     e("div", { className: "ob-opt-title" }, "Explorar con datos de ejemplo"),
                                     e("span", { className: "ob-opt-tag" }, "demo")
                                 ),
-                                e("div", { className: "ob-opt-desc" }, "Ideal para entender rápido cómo se conectan materias, backlog, calendario, sesiones y alertas."),
+                                e("div", { className: "ob-opt-desc" }, hasExistingData ? "Carga un planner de ejemplo y reemplaza el estado actual solo si lo confirmás." : "Ideal para entender rápido cómo se conectan materias, backlog, calendario, sesiones y alertas."),
                                 e("small", null, "Se cargan materias, tareas y sesiones ficticias para que puedas recorrer la app y enseguida ver cómo te devuelve valor.")
                             )
                         ),
@@ -8338,7 +8375,8 @@ e("div", { className: "calgrid" },
                             " crear tus materias, definir objetivos semanales y marcar tus slots en la Vista Semana. Con eso la app ya empieza a transformarte fechas sueltas en un plan concreto."
                         ),
                         e("div", { className: "ob-row" },
-                            e("button", { className: "ob-btn-sec", onClick: () => goTo("tema") }, "← Atrás")
+                            e("button", { className: "ob-btn-sec", onClick: () => goTo("tema") }, "← Atrás"),
+                            hasExistingData && e("button", { className: "ob-btn-sec", onClick: onExit }, "Salir a la app")
                         )
                     
                     )
@@ -8351,58 +8389,100 @@ e("div", { className: "calgrid" },
 
         /* ─── RESET MODAL ── */
 
-        function ResetModal({ driveConnected, resetConfirm, setResetConfirm, onResetEmpty, onResetSample, onClose }) {
-            // resetConfirm: null | "empty" | "sample"
-            if (resetConfirm) {
-                const isEmpty = resetConfirm === "empty";
-                return e("div", { className: "ov", onClick: onClose },
-                    e("div", { className: "mod", style: { maxWidth: 360 }, onClick: ev => ev.stopPropagation() },
-                        e("div", { className: "mhd" },
-                            e("span", { style: { fontSize: 20 } }, "⚠"),
-                            e("span", { className: "mtit" }, "¿Confirmar reseteo?"),
-                            e("button", { className: "mclose", onClick: onClose }, "✕")
-                        ),
-                        e("div", { className: "mbody" },
-                            e("p", { style: { fontSize: 13, color: "var(--err-text)", lineHeight: 1.6, marginBottom: 18 } },
-                                isEmpty
-                                    ? (driveConnected
-                                        ? "Esto borrará los datos locales y el archivo en Drive. No se puede deshacer."
-                                        : "Esto borrará todos los datos locales. No se puede deshacer.")
-                                    : (driveConnected
-                                        ? "Se reemplazarán los datos locales y el archivo en Drive con los datos de ejemplo. No se puede deshacer."
-                                        : "Se reemplazarán todos los datos locales con los datos de ejemplo. No se puede deshacer.")
-                            ),
-                            e("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } },
-                                e("button", { className: "cancbtn", onClick: onClose }, "Cancelar"),
-                                e("button", {
-                                    className: "delbtn", style: { width: "auto", padding: "6px 16px" },
-                                    onClick: isEmpty ? onResetEmpty : onResetSample
-                                }, "Sí, confirmar")
+        
+        function ConfirmModal({ title, message, confirmLabel, cancelLabel, tone, icon, onConfirm, onClose }) {
+            const accentBg = tone === "danger" ? "var(--err-bg)" : "var(--warn-bg)";
+            const accentText = tone === "danger" ? "var(--err-text)" : "var(--warn-text)";
+            const accentBorder = tone === "danger" ? "var(--err-border)" : "var(--warn-border)";
+            const paragraphs = String(message || "").split(/\n\n+/).filter(Boolean);
+            return e("div", { className: "ov", onClick: onClose },
+                e("div", { className: "mod", style: { maxWidth: 430 }, onClick: ev => ev.stopPropagation() },
+                    e("div", { className: "mhd" },
+                        e("span", {
+                            style: {
+                                width: 30,
+                                height: 30,
+                                borderRadius: 9,
+                                background: accentBg,
+                                color: accentText,
+                                border: `1px solid ${accentBorder}`,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: 16,
+                                flexShrink: 0
+                            }
+                        }, icon || "⚠"),
+                        e("span", { className: "mtit" }, title || "Confirmar acción"),
+                        e("button", { className: "mclose", onClick: onClose }, "✕")
+                    ),
+                    e("div", { className: "mbody" },
+                        e("div", {
+                            style: {
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 10,
+                                marginBottom: 18
+                            }
+                        },
+                            ...paragraphs.map((paragraph, idx) =>
+                                e("div", {
+                                    key: idx,
+                                    style: {
+                                        fontSize: 12,
+                                        lineHeight: 1.7,
+                                        color: idx === 1 ? accentText : "var(--text1)",
+                                        padding: idx === 1 ? "10px 12px" : 0,
+                                        background: idx === 1 ? accentBg : "transparent",
+                                        border: idx === 1 ? `1px solid ${accentBorder}` : "none",
+                                        borderRadius: idx === 1 ? 9 : 0
+                                    }
+                                }, paragraph)
                             )
+                        ),
+                        e("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } },
+                            e("button", { className: "cancbtn", onClick: onClose }, cancelLabel || "Cancelar"),
+                            e("button", {
+                                className: tone === "danger" ? "delbtn" : "savebtn",
+                                style: { width: "auto", minWidth: 150, padding: "9px 16px" },
+                                onClick: onConfirm
+                            }, confirmLabel || "Continuar")
                         )
                     )
-                );
-            }
+                )
+            );
+        }
 
+        function ResetModal({ driveConnected, onChooseEmpty, onChooseSample, onClose }) {
             return e("div", { className: "ov", onClick: onClose },
-                e("div", { className: "mod", style: { maxWidth: 400 }, onClick: ev => ev.stopPropagation() },
+                e("div", { className: "mod", style: { maxWidth: 420 }, onClick: ev => ev.stopPropagation() },
                     e("div", { className: "mhd" },
                         e("span", { style: { fontSize: 20 } }, "🗑"),
                         e("span", { className: "mtit" }, "Resetear datos"),
                         e("button", { className: "mclose", onClick: onClose }, "✕")
                     ),
                     e("div", { className: "mbody" },
+                        e("div", {
+                            style: {
+                                fontSize: 12,
+                                color: "var(--text1)",
+                                lineHeight: 1.7,
+                                marginBottom: 16
+                            }
+                        },
+                            "Elegí si querés dejar el planner vacío o volver a cargar los datos demo. Si la opción reemplaza el estado actual, la app te lo va a confirmar antes de aplicar el cambio."
+                        ),
                         driveConnected && e("div", {
                             style: {
                                 fontSize: 11, color: "var(--text2)", marginBottom: 14,
                                 padding: "8px 10px", background: "var(--bg2)", borderRadius: 5
                             }
                         },
-                            "⚠ Al resetear también se borrará el archivo en Google Drive."
+                            "⚠ Si estás usando Google Drive, el cambio también va a impactar el archivo sincronizado."
                         ),
                         e("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
                             e("button", {
-                                onClick: () => setResetConfirm("empty"),
+                                onClick: onChooseEmpty,
                                 style: {
                                     background: "var(--err-bg)", border: "1px solid var(--err-border)",
                                     color: "var(--err-text)", padding: "12px 16px", borderRadius: 7, cursor: "pointer",
@@ -8413,7 +8493,7 @@ e("div", { className: "calgrid" },
                                 e("div", { style: { fontSize: 11 } }, "La app queda en blanco, sin ningún dato.")
                             ),
                             e("button", {
-                                onClick: () => setResetConfirm("sample"),
+                                onClick: onChooseSample,
                                 style: {
                                     background: "var(--bg2)", border: "1px solid var(--border2)",
                                     color: "var(--text0)", padding: "12px 16px", borderRadius: 7, cursor: "pointer",
@@ -8467,8 +8547,8 @@ e("div", { className: "calgrid" },
                                     (conflict.localData.tareas?.length || 0) + " tareas · " + (conflict.localData.materias?.length || 0) + " materias")
                             )
                         ),
-                        e("p", { style: { fontSize: 10, color: "var(--text3)", marginTop: 14, textAlign: "center" } },
-                            "Los datos que no elijas no se borran automáticamente."
+                        e("p", { style: { fontSize: 10, color: "var(--text3)", marginTop: 14, textAlign: "center", lineHeight: 1.6 } },
+                            "Si conservás los datos locales, esa versión va a pasar a ser la activa y podrá sobrescribir la de Drive en la próxima sincronización. Los datos que no elijas no se borran automáticamente."
                         )
                     )
                 )
@@ -8611,13 +8691,11 @@ e("div", { className: "calgrid" },
         ];
         function HelpGuide({ onClose, onRestartOnboarding }) {
             const [tab, setTab] = useState("inicio");
-            const sec = GUIDE_SECTIONS.find(s => s.id === tab) || GUIDE_SECTIONS[0];
             const contentRef = useRef(null);
             useEffect(() => {
-                if (contentRef.current) {
-                    contentRef.current.scrollTop = 0;
-                }
+                if (contentRef.current) contentRef.current.scrollTo({ top: 0, behavior: "auto" });
             }, [tab]);
+            const sec = GUIDE_SECTIONS.find(s => s.id === tab) || GUIDE_SECTIONS[0];
 
             // Group sections
             const GROUP1 = ["inicio", "hoy", "semana", "materias", "sesiones"];
@@ -8711,7 +8789,7 @@ e("div", { className: "calgrid" },
                     e("div", { className: "hg-footer" },
                         e("span", { className: "hg-footer-note" }, sec.content.length + " temas en esta sección · " + GUIDE_SECTIONS.length + " secciones en total"),
                         e("div", { style: { display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" } },
-                            onRestartOnboarding && e("button", { className: "cancbtn", onClick: onRestartOnboarding, title: "Volver a ver la bienvenida sin borrar tus datos" }, "Reiniciar onboarding"),
+                            onRestartOnboarding && e("button", { className: "cancbtn", onClick: onRestartOnboarding, title: "Volver a ver la bienvenida sin borrar tus datos" }, "Volver a ver onboarding"),
                             e("button", { className: "savebtn", onClick: onClose }, "Entendido →")
                         )
                     )
@@ -8785,24 +8863,47 @@ e("div", { className: "calgrid" },
                 const shellEl = chromeShellRef.current;
                 if (!appEl || !shellEl) return;
 
+                const panelEl = shellEl.querySelector(".chrome-panel");
+                const peekEl = shellEl.querySelector(".chrome-peek");
+
                 const updateChromeOffset = () => {
-                    const shellHeight = Math.ceil(shellEl.getBoundingClientRect().height);
-                    const peekHeight = parseFloat(getComputedStyle(shellEl).getPropertyValue("--chrome-peek-height")) || 26;
-                    const visibleHeight = chromeExpanded ? shellHeight : 0;
-                    const safeGap = chromeExpanded ? 14 : 22;
-                    appEl.style.setProperty("--chrome-offset", `${Math.max(visibleHeight, 0) + safeGap}px`);
+                    const panelBottom = panelEl ? Math.ceil(panelEl.getBoundingClientRect().bottom) : 0;
+                    const peekBottom = peekEl ? Math.ceil(peekEl.getBoundingClientRect().bottom) : 0;
+                    const occupiedHeight = chromeExpanded ? panelBottom : peekBottom;
+                    const safeGap = chromeExpanded ? 14 : 12;
+                    appEl.style.setProperty("--chrome-offset", `${Math.max(occupiedHeight, 0) + safeGap}px`);
                 };
 
+                let raf1 = requestAnimationFrame(updateChromeOffset);
+                let raf2 = requestAnimationFrame(() => requestAnimationFrame(updateChromeOffset));
                 updateChromeOffset();
 
                 const ro = new ResizeObserver(updateChromeOffset);
                 ro.observe(shellEl);
-                window.addEventListener("resize", updateChromeOffset);
+                if (panelEl) ro.observe(panelEl);
+                if (peekEl) ro.observe(peekEl);
+
+                const mo = new MutationObserver(updateChromeOffset);
+                if (panelEl) {
+                    mo.observe(panelEl, { childList: true, subtree: true, attributes: true });
+                }
+
+                const onViewportChange = () => updateChromeOffset();
+                window.addEventListener("resize", onViewportChange);
+                window.addEventListener("orientationchange", onViewportChange);
+                if (document.fonts && document.fonts.ready) {
+                    document.fonts.ready.then(updateChromeOffset).catch(() => {});
+                }
+
                 return () => {
+                    cancelAnimationFrame(raf1);
+                    cancelAnimationFrame(raf2);
                     ro.disconnect();
-                    window.removeEventListener("resize", updateChromeOffset);
+                    mo.disconnect();
+                    window.removeEventListener("resize", onViewportChange);
+                    window.removeEventListener("orientationchange", onViewportChange);
                 };
-            }, [chromeExpanded, view]);
+            }, [chromeExpanded, view, fm, ft, fa, data.tareas.length]);
 
             function showChromeTemporarily() {
                 if (!chromePinned) setChromeHover(true);
@@ -8844,10 +8945,14 @@ e("div", { className: "calgrid" },
                 localStorage.setItem("uai-guia-vista", "true");
                 setShowHelp(false);
             }
+            const [onboardingReturnToApp, setOnboardingReturnToApp] = useState(false);
             function restartOnboarding() {
                 localStorage.removeItem("uai-guia-vista");
-                localStorage.setItem(LS_MODE_KEY, "welcome");
                 setShowHelp(false);
+                // Si el usuario ya estaba dentro de la app, el onboarding debe comportarse
+                // como una reentrada guiada aunque el planner esté vacío o en demo.
+                setOnboardingReturnToApp(true);
+                localStorage.setItem(LS_MODE_KEY, "welcome");
                 setAppMode("welcome");
             }
             const autoSaveTimer = useRef(null);
@@ -8883,9 +8988,10 @@ e("div", { className: "calgrid" },
                     driveConnectSilent((token, err) => {
                         if (token) { setDriveConnected(true); setSyncStatus("idle"); }
                         else {
-                            setAppMode("welcome");
-                            localStorage.setItem(LS_MODE_KEY, "welcome");
-                            setSyncMsg("Tu sesión de Google expiró. Volvé a conectarte.");
+                            setDriveConnected(false);
+                            localStorage.setItem(LS_MODE_KEY, "local");
+                            setAppMode("local");
+                            setSyncMsg("Tu sesión de Google expiró. Seguís en modo local con tus datos actuales.");
                         }
                     });
                 }
@@ -8976,11 +9082,16 @@ e("div", { className: "calgrid" },
                                 const { version: _v, ...cleanDrive } = driveData;
                                 cleanDrive.tareas = (cleanDrive.tareas || []).map(t => ({ items: [], obligatorio: true, ...t }));
                                 cleanDrive.sesiones = cleanDrive.sesiones || [];
-                                if (isEmptyData(data) || isSampleData(data) || fromWelcome) {
-                                    // Local empty/sample → auto-load Drive
+                                const localKind = getPlannerDataKind(data);
+                                const driveKind = getPlannerDataKind(cleanDrive);
+                                if (localKind === "empty" && driveKind !== "none") {
+                                    // Local vacío → usar Drive directamente
+                                    setData(cleanDrive); lastExp.current = hashData(cleanDrive); setDirty(false);
+                                } else if (localKind === driveKind && hashData(data) === hashData(cleanDrive)) {
+                                    // Ya son iguales
                                     setData(cleanDrive); lastExp.current = hashData(cleanDrive); setDirty(false);
                                 } else {
-                                    // Both have real data → conflict
+                                    // Hay diferencia entre lo local y lo remoto → decidir explícitamente
                                     setDriveConflict({ driveData: cleanDrive, localData: data });
                                 }
                             }).catch(() => { });
@@ -8992,53 +9103,31 @@ e("div", { className: "calgrid" },
                 });
             }
             const [resetModal, setResetModal] = useState(false);
-            const [resetConfirm, setResetConfirm] = useState(null);
+            const [customConfirm, setCustomConfirm] = useState(null);
 
             function handleDriveDisconnect() {
-                // Disconnect: revoke token, clear local data, back to welcome — no questions
+                // Disconnect without losing the current planner: keep current data locally and continue in local mode.
+                const currentData = data;
                 driveDisconnect();
-                clearLS(userEmail);
                 setDriveConnected(false); setSyncStatus("idle");
+                if (!isDemo) {
+                    saveToLS(currentData, null);
+                }
                 setUserEmail(null);
                 localStorage.removeItem(LS_EMAIL_KEY);
-                localStorage.setItem(LS_MODE_KEY, "welcome");
-                setAppMode("welcome");
-                setData(EMPTY_DATA);
+                localStorage.setItem(LS_MODE_KEY, "local");
+                setAppMode("local");
+                setDirty(false);
+                lastExp.current = hashData(currentData);
+                setSyncMsg("Google Drive se desconectó. Seguís en modo local con tus datos actuales.");
             }
 
-            async function doResetEmpty() {
-                // Clear local + Drive file, stay in planner with empty data
-                clearLS(userEmail); clearLS(null);
-                if (driveConnected && driveState.fileId) {
-                    try {
-                        await fetch(`https://www.googleapis.com/drive/v3/files/${driveState.fileId}`,
-                            { method: "DELETE", headers: { Authorization: `Bearer ${driveState.accessToken}` } });
-                        driveState.fileId = null;
-                        localStorage.removeItem(LS_FILE_ID);
-                    } catch (e) { }
-                }
-                setData(EMPTY_DATA);
-                lastExp.current = hashData(EMPTY_DATA);
-                setDirty(false);
-                setResetModal(false); setResetConfirm(null);
+            function doResetEmpty() {
+                requestPlannerDataChange("empty", { context: "reset" });
             }
 
             function doResetSample() {
-                // Reset to sample data, stay in planner
-                clearLS(userEmail); clearLS(null);
-                if (driveConnected && driveState.fileId) {
-                    try {
-                        fetch(`https://www.googleapis.com/drive/v3/files/${driveState.fileId}`,
-                            { method: "DELETE", headers: { Authorization: `Bearer ${driveState.accessToken}` } });
-                        driveState.fileId = null;
-                        localStorage.removeItem(LS_FILE_ID);
-                    } catch (e) { }
-                }
-                setData(SAMPLE);
-                setIsDemo(false);
-                lastExp.current = hashData(SAMPLE);
-                setDirty(false);
-                setResetModal(false); setResetConfirm(null);
+                requestPlannerDataChange("demo", { context: "reset" });
             }
             function handleDriveSaveNow() {
                 setSyncStatus("saving");
@@ -9078,21 +9167,167 @@ e("div", { className: "calgrid" },
             function deleteSession(sessionId) {
                 setData(d => ({ ...d, sesiones: (d.sesiones || []).filter(s => s.id !== sessionId) }));
             }
-            function enterLocal() {
+            function hasExistingRealDataForOnboarding() {
+                return hasAnyRealPlannerData(
+                    data,
+                    loadFromLS(userEmail),
+                    loadFromLS(null),
+                    appMode === "drive" ? loadFromLS(userEmail) : null
+                );
+            }
+
+            function currentOnboardingDataKind() {
+                return getPlannerDataKind(data);
+            }
+
+            function buildDataChangeConfirm(targetKind, currentKind, { context = "generic" } = {}) {
+                const isEmptyTarget = targetKind === "empty";
+                const usingDrive = context === "reset" && driveConnected;
+                const title = isEmptyTarget ? "Empezar con planner vacío" : "Cargar datos demo";
+                const icon = isEmptyTarget ? "🧹" : "🧪";
+                const tone = isEmptyTarget ? "danger" : "warn";
+                const confirmLabel = isEmptyTarget ? "Sí, continuar con vacío" : "Sí, continuar con demo";
+
+                let message = "";
+                if (currentKind === "real" && targetKind === "empty") {
+                    message = usingDrive
+                        ? `Ya hay datos cargados en este planner y también podrían estar sincronizados con Google Drive.
+
+Si seguís, se va a reemplazar el estado actual por un planner vacío.`
+                        : `Ya hay datos cargados en este planner.
+
+Si seguís, se va a reemplazar el estado actual por un planner vacío.`;
+                } else if (currentKind === "real" && targetKind === "demo") {
+                    message = usingDrive
+                        ? `Ya hay datos cargados en este planner y también podrían estar sincronizados con Google Drive.
+
+Si seguís, se van a reemplazar tus datos actuales por los datos de ejemplo.`
+                        : `Ya hay datos cargados en este planner.
+
+Si seguís, se van a reemplazar tus datos actuales por los datos de ejemplo.`;
+                } else if (currentKind === "demo" && targetKind === "empty") {
+                    message = `Ahora mismo tenés cargados los datos demo.
+
+Si seguís, se van a reemplazar por un planner vacío.`;
+                } else if (currentKind === "empty" && targetKind === "demo") {
+                    message = `Ahora mismo tenés un planner vacío.
+
+Si seguís, se va a reemplazar el estado actual por los datos de ejemplo.`;
+                } else if (currentKind === "demo" && targetKind === "demo") {
+                    message = `Ahora mismo ya estás usando los datos demo.
+
+Si seguís, se van a volver a cargar desde cero y se perderán los cambios que hayas hecho sobre ese ejemplo.`;
+                } else if (currentKind === "empty" && targetKind === "empty") {
+                    message = `Ahora mismo ya tenés un planner vacío.
+
+Si seguís, se va a restablecer ese estado vacío y se descartarán los cambios de configuración o estructura que hayas hecho desde entonces.`;
+                } else {
+                    message = isEmptyTarget
+                        ? "Se va a reemplazar el estado actual por un planner vacío."
+                        : "Se va a reemplazar el estado actual por los datos de ejemplo.";
+                }
+
+                if (usingDrive) {
+                    message += `
+
+Como estás usando Google Drive, el cambio también va a impactar el archivo sincronizado.`;
+                }
+
+                message += `
+
+¿Querés continuar?`;
+
+                return { title, icon, tone, confirmLabel, message };
+            }
+
+            function openPlannerAfterOnboarding(nextData, { demo = false } = {}) {
                 localStorage.setItem(LS_MODE_KEY, "local");
                 setAppMode("local");
+                setData(nextData);
+                setIsDemo(!!demo);
                 setShowHelp(true);
-                const saved = loadFromLS(null);
-                if (saved) { setData(saved); lastExp.current = hashData(saved); }
-                else { setData(EMPTY_DATA); lastExp.current = hashData(EMPTY_DATA); }
-                setIsDemo(false);
+                setOnboardingReturnToApp(false);
+                lastExp.current = hashData(nextData);
+                setDirty(false);
+                saveToLS(nextData, null);
             }
+
+            async function applyPlannerDataChoice(targetKind, { context = "reset" } = {}) {
+                const nextData = targetKind === "demo" ? SAMPLE : EMPTY_DATA;
+                const isDemoTarget = targetKind === "demo";
+
+                if (context === "onboarding") {
+                    openPlannerAfterOnboarding(nextData, { demo: isDemoTarget });
+                    return;
+                }
+
+                clearLS(userEmail);
+                clearLS(null);
+
+                if (driveConnected && driveState.fileId) {
+                    try {
+                        await fetch(`https://www.googleapis.com/drive/v3/files/${driveState.fileId}`, {
+                            method: "DELETE",
+                            headers: { Authorization: `Bearer ${driveState.accessToken}` }
+                        });
+                        driveState.fileId = null;
+                        localStorage.removeItem(LS_FILE_ID);
+                    } catch (e) { }
+                }
+
+                setData(nextData);
+                setIsDemo(isDemoTarget);
+                lastExp.current = hashData(nextData);
+                setDirty(false);
+                setResetModal(false);
+                if (driveConnected) setSyncStatus("idle");
+                setSyncMsg(isDemoTarget ? "Se cargaron los datos de ejemplo." : "El planner quedó vacío.");
+            }
+
+            function requestPlannerDataChange(targetKind, { context = "reset" } = {}) {
+                const currentKind = getPlannerDataKind(data);
+                const sameKind = currentKind === targetKind;
+                const revisitingOnboarding = context === "onboarding" && onboardingReturnToApp;
+                const needsConfirm = context === "reset" || revisitingOnboarding;
+                const shouldReapplySameKind = sameKind && (targetKind === "demo" || (targetKind === "empty" && hashData(data) !== hashData(EMPTY_DATA)));
+
+                if (context === "reset") {
+                    setResetModal(false);
+                }
+
+                if (sameKind && !shouldReapplySameKind) {
+                    if (context === "onboarding") {
+                        applyPlannerDataChoice(targetKind, { context });
+                    }
+                    return;
+                }
+
+                if (!needsConfirm) {
+                    applyPlannerDataChoice(targetKind, { context });
+                    return;
+                }
+
+                setCustomConfirm({
+                    ...buildDataChangeConfirm(targetKind, currentKind, { context: revisitingOnboarding ? "revisit" : context }),
+                    onConfirm: () => applyPlannerDataChoice(targetKind, { context })
+                });
+            }
+
+            function enterLocal() {
+                requestPlannerDataChange("empty", { context: "onboarding" });
+            }
+
             function enterDemo() {
-                setData(SAMPLE);
-                setIsDemo(true);
-                setAppMode("local"); // show the planner but don't save
-                setShowHelp(true);
+                requestPlannerDataChange("demo", { context: "onboarding" });
             }
+
+            function exitOnboardingToApp() {
+                localStorage.setItem(LS_MODE_KEY, driveConnected ? "drive" : "local");
+                setAppMode(driveConnected ? "drive" : "local");
+                setShowHelp(false);
+                setOnboardingReturnToApp(false);
+            }
+
             function startPomoFromTask(task) {
                 setPomoSession({ materiaId: task.materiaId, tareaId: task.id });
                 setSelId(null);
@@ -9197,9 +9432,24 @@ e("div", { className: "calgrid" },
                         onLocal: enterLocal,
                         onDemo: enterDemo,
                         onShowHelp: () => setShowHelp(true),
-                        expiredMsg: syncMsg && syncMsg.includes("expiró") ? syncMsg : null
+                        expiredMsg: syncMsg && syncMsg.includes("expiró") ? syncMsg : null,
+                        hasExistingData: onboardingReturnToApp,
+                        onExit: exitOnboardingToApp
                     }),
-                    showHelp && e(HelpGuide, { onClose: closeHelp, onRestartOnboarding: restartOnboarding })
+                    customConfirm && e(ConfirmModal, {
+                        title: customConfirm.title,
+                        message: customConfirm.message,
+                        confirmLabel: customConfirm.confirmLabel,
+                        cancelLabel: customConfirm.cancelLabel,
+                        tone: customConfirm.tone,
+                        icon: customConfirm.icon,
+                        onClose: () => setCustomConfirm(null),
+                        onConfirm: () => {
+                            const fn = customConfirm.onConfirm;
+                            setCustomConfirm(null);
+                            if (typeof fn === "function") fn();
+                        }
+                    })
                 );
             }
 
@@ -9367,6 +9617,21 @@ e("div", { className: "calgrid" },
                     onClose: () => setImportTasksOpen(false)
                 }),
                 e(UnsavedToast, { dirty, driveConnected, isDemo }),
+                customConfirm && e(ConfirmModal, {
+                    title: customConfirm.title,
+                    message: customConfirm.message,
+                    confirmLabel: customConfirm.confirmLabel,
+                    cancelLabel: customConfirm.cancelLabel,
+                    tone: customConfirm.tone,
+                    icon: customConfirm.icon,
+                    onClose: () => setCustomConfirm(null),
+                    onConfirm: () => {
+                        const fn = customConfirm.onConfirm;
+                        setCustomConfirm(null);
+                        if (typeof fn === "function") fn();
+                    }
+                }),
+
                 driveConflict && e(DriveConflictModal, {
                     conflict: driveConflict,
                     onUseDrive: () => {
@@ -9378,19 +9643,20 @@ e("div", { className: "calgrid" },
                         setData(d); lastExp.current = hashData(d); setDirty(false); setDriveConflict(null);
                     },
                     onUseLocal: () => {
-                        setDirty(true); setDriveConflict(null); // mark dirty so it uploads local to Drive
+                        setDirty(true);
+                        setSyncMsg("Se conservaron los datos locales. Esa versión quedará como activa y podrá sobrescribir la de Drive en la próxima sincronización.");
+                        setDriveConflict(null);
                     },
                     onClose: () => setDriveConflict(null)
                 }),
 
                 resetModal && e(ResetModal, {
                     driveConnected,
-                    resetConfirm, setResetConfirm,
-                    onResetEmpty: doResetEmpty,
-                    onResetSample: doResetSample,
-                    onClose: () => { setResetModal(false); setResetConfirm(null); }
+                    onChooseEmpty: doResetEmpty,
+                    onChooseSample: doResetSample,
+                    onClose: () => { setResetModal(false); }
                 }),
-                showHelp && e(HelpGuide, { onClose: closeHelp, onRestartOnboarding: restartOnboarding }),
+                appMode !== "welcome" && showHelp && e(HelpGuide, { onClose: closeHelp, onRestartOnboarding: restartOnboarding }),
                 editObjetivoM && e("div", { className: "ov", onClick: () => setEditObjetivoM(null) },
                     e("div", { className: "mod", style: { maxWidth: 640 }, onClick: ev => ev.stopPropagation() },
                         e("div", { className: "mhd" },
