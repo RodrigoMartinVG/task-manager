@@ -6123,6 +6123,82 @@ e("div", { className: "calgrid" },
                     ),
                     e("div", { className: "mbody" },
                         (err || !preview.ok) && e("div", { className: "ferr" }, err || preview.error),
+
+                        e("div", {
+                            style: {
+                                marginBottom: 14,
+                                padding: "12px 14px",
+                                borderRadius: 10,
+                                background: "var(--bg2)",
+                                border: "1px solid var(--border)",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 8
+                            }
+                        },
+                            e("div", {
+                                style: {
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    color: "var(--text0)",
+                                    letterSpacing: ".04em"
+                                }
+                            }, "AYUDA · SINCRO CALENDARIO UAI"),
+                            e("div", {
+                                style: {
+                                    fontSize: 11,
+                                    lineHeight: 1.7,
+                                    color: "var(--text1)"
+                                }
+                            },
+                                "1. Abrí esta app y también la página del Aula Virtual donde ves el calendario o las fechas de vencimiento.",
+                                e("br"),
+                                "2. En la página del Aula Virtual, abrí la consola del navegador y ejecutá el script ",
+                                e("code", {
+                                    style: {
+                                        fontFamily: "inherit",
+                                        background: "var(--bg1)",
+                                        border: "1px solid var(--border)",
+                                        borderRadius: 6,
+                                        padding: "1px 6px",
+                                        color: "var(--text0)"
+                                    }
+                                }, "extractor_vencimientos.js"),
+                                ".",
+                                e("br"),
+                                "3. Ese script guarda automáticamente los JSON detectados en el localStorage para que aparezcan en el selector de abajo.",
+                                e("br"),
+                                "4. Mantené abiertas ambas páginas: la del planner y la del Aula Virtual."
+                            ),
+                            e("div", {
+                                style: {
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 10,
+                                    flexWrap: "wrap"
+                                }
+                            },
+                                e("a", {
+                                    href: "extractor_vencimientos.js",
+                                    download: "extractor_vencimientos.js",
+                                    className: "savebtn",
+                                    style: {
+                                        textDecoration: "none",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        minWidth: 0
+                                    }
+                                }, "Descargar extractor_vencimientos.js"),
+                                e("span", {
+                                    style: {
+                                        fontSize: 10,
+                                        color: "var(--text3)"
+                                    }
+                                }, "Ejecutalo en la consola del Aula Virtual, no en esta app.")
+                            )
+                        ),
+
                         
                         // Selector permanente de historial
                         e("div", { className: "fg" },
