@@ -1611,7 +1611,7 @@
                 min-width: 0
             }
 
-            .periodo-sel {
+            .periodo-selectedTask {
                 flex: 0 1 auto;
                 min-width: 0
             }
@@ -3757,7 +3757,7 @@
             padding: 8px
         }
 
-        .periodo-sel {
+        .periodo-selectedTask {
             display: flex;
             align-items: center;
             position: relative
@@ -3820,7 +3820,7 @@
             font-weight: 500
         }
 
-        .calf-sel {
+        .calf-selectedTask {
             display: flex;
             align-items: center;
             position: relative;
@@ -3874,7 +3874,7 @@
 
                 // 2. Opcional: Evitar duplicar la misma materia el mismo día
                 // (Si prefieres que siempre sea nuevo, salta este paso)
-                historial = historial.filter(imp => imp.materia !== nuevaImportacion.materia);
+                historial = historial.filter(importPlannerBackup => importPlannerBackup.materia !== nuevaImportacion.materia);
 
                 // 3. Agregamos la nueva importación al array
                 historial.push(nuevaImportacion);
@@ -4266,6 +4266,15 @@ function driveIsConnected() {
             try { localStorage.removeItem(lsDataKey(email)); } catch (e) { }
         }
 
+        /**
+         * Normaliza un backup/planner importado a la estructura mínima esperada por la app.
+         * Contrato:
+         * - recibe un objeto potencialmente incompleto
+         * - devuelve un planner clonado y normalizado
+         * - lanza error si faltan bloques incompatibles con el formato esperado
+         * Riesgo histórico que evita:
+         * - que importaciones válidas pero parciales rompan vistas o flujos posteriores
+         */
         function normalizeImportedPlannerData(rawData) {
             const cloned = clonePlannerData(rawData || {});
             if (!cloned.materias || !cloned.tareas) throw new Error("Formato inválido");
@@ -4276,6 +4285,15 @@ function driveIsConnected() {
         }
 
         /* PHASE 7 — servicios internos para persistencia, import/export y Drive */
+        /**
+         * Servicio de persistencia local.
+         * Responsabilidad:
+         * - leer y escribir modo, email y planner local
+         * - encapsular el acceso a localStorage para que App no conozca claves concretas
+         * No debe:
+         * - decidir reglas de negocio
+         * - resolver conflictos de datos
+         */
         const PlannerStorage = {
             getMode() {
                 return localStorage.getItem(LS_MODE_KEY) || "welcome";
@@ -4314,6 +4332,14 @@ function driveIsConnected() {
             }
         };
 
+        /**
+         * Servicio de sincronización con Google Drive.
+         * Responsabilidad:
+         * - encapsular OAuth, lectura, escritura y metadatos de sincronización
+         * No debe:
+         * - decidir qué versión del planner gana en un conflicto
+         * - mutar estado React directamente
+         */
         const PlannerDriveSync = {
             ready() {
                 return driveReady();
@@ -4344,6 +4370,15 @@ function driveIsConnected() {
             }
         };
 
+        /**
+         * Servicio de importación/exportación del planner.
+         * Responsabilidad:
+         * - descargar backups
+         * - abrir el selector de archivo
+         * - normalizar estructuras importadas
+         * No debe:
+         * - aplicar commits de estado por su cuenta
+         */
         const PlannerImportExport = {
             normalizePlannerData(rawData) {
                 return normalizeImportedPlannerData(rawData);
@@ -4746,7 +4781,7 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
             );
         }
         /* ─── EXPORT BUTTON ── */
-        function ExportBtn({ data, dirty, onExported }) {
+        function ExportBtn({ data, dirty, markCurrentPlannerAsExported }) {
             const [flash, setFlash] = useState(false);
             function doExport() {
                 const ts = new Date().toISOString().slice(0, 16).replace("T", "_").replace(/:/g, "-");
@@ -4754,7 +4789,7 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a"); a.href = url; a.download = `uai-planner_${ts}.json`; a.click();
                 URL.revokeObjectURL(url);
-                setFlash(true); onExported(); setTimeout(() => setFlash(false), 2000);
+                setFlash(true); markCurrentPlannerAsExported(); setTimeout(() => setFlash(false), 2000);
             }
             if (flash) return e("button", { className: "exp-saved", disabled: true }, "✓ Exportado");
             if (dirty) return e("button", { className: "exp-dirty", onClick: doExport, title: "Cambios sin exportar" }, "↓ Exportar •");
@@ -4858,7 +4893,7 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
             }, [onClose]);
         }
         /* ─── URGENT CHIP ── */
-        function UrgentBanner({ urgentTasks, alertas, mmap, onSelTask }) {
+        function UrgentBanner({ urgentTasks, alertas, subjectsById, onSelTask }) {
             const [open, setOpen] = useState(false);
             const ref = useRef(null);
             useClickOutside(ref, () => setOpen(false));
@@ -4941,7 +4976,7 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
                                     dateStr = t.fechaInicio ? fd(t.fechaInicio) : "";
                                 }
 
-                                const mat = mmap && mmap[t.materiaId];
+                                const mat = subjectsById && subjectsById[t.materiaId];
                                 const horaStr = t.hora ? " · " + t.hora : "";
                                 return e("div", {
                                     key: t.id,
@@ -5303,12 +5338,12 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
             );
         }
         /* ─── DATOS BUTTON ── */
-        function DatosBtn({ data, dirty, onExported, imp, driveConnected, syncStatus, autoSave, showSync, setShowSync, handleDriveConnect, handleDriveDisconnect, handleDriveSaveNow, handleDriveLoad, toggleAutoSave, onReset, userEmail }) {
+        function DatosBtn({ data, dirty, markCurrentPlannerAsExported, importPlannerBackup, driveConnected, syncStatus, autoSave, showSync, setShowSync, handleDriveConnect, handleDriveDisconnect, handleDriveSaveNow, handleDriveLoad, toggleAutoSave, onReset, userEmail }) {
             const ref = useRef(null);
             useClickOutside(ref, () => setShowSync(false));
 
             function doExport() {
-                PlannerImportExport.downloadPlannerData(data, { onDone: onExported });
+                PlannerImportExport.downloadPlannerData(data, { onDone: markCurrentPlannerAsExported });
             }
 
             let badgeClass = "", badgeText = "";
@@ -5327,12 +5362,12 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
                 showSync && e(DatosPopover, {
                     driveConnected, syncStatus, autoSave, dirty,
                     handleDriveConnect, handleDriveDisconnect,
-                    onClose: () => setShowSync(false), doExport, imp, onReset, userEmail
+                    onClose: () => setShowSync(false), doExport, importPlannerBackup, onReset, userEmail
                 })
             );
         }
 
-        function DatosPopover({ driveConnected, syncStatus, autoSave, dirty, handleDriveConnect, handleDriveDisconnect, onClose, doExport, imp, onReset, userEmail }) {
+        function DatosPopover({ driveConnected, syncStatus, autoSave, dirty, handleDriveConnect, handleDriveDisconnect, onClose, doExport, importPlannerBackup, onReset, userEmail }) {
             const lastSaved = PlannerDriveSync.lastSaved();
             return e("div", { className: "sync-popover" },
                 e("div", { className: "sync-pop-hd" },
@@ -5344,7 +5379,7 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
                 e("div", { className: "sync-section" },
                     e("div", { className: "sync-section-title" }, "LOCAL"),
                     e("div", { className: "sync-row" },
-                        e("button", { className: "sync-action-btn", onClick: () => { imp(); onClose(); } }, "↑ Importar archivo"),
+                        e("button", { className: "sync-action-btn", onClick: () => { importPlannerBackup(); onClose(); } }, "↑ Importar archivo"),
                         e("button", {
                             className: "sync-action-btn " + (dirty && !driveConnected ? "sync-action-btn-highlight" : ""),
                             onClick: () => { doExport(); onClose(); }
@@ -5448,7 +5483,7 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
             const anioLabel = fAnio === "all" ? "Todos" : fAnio;
             const periodosLabel = fPeriodos.length === 3 ? "Todos los períodos" : fPeriodos.map(p => p === "c1" ? "C1" : p === "c2" ? "C2" : "Anual").join(", ");
 
-            return e("div", { className: "periodo-sel", style: { marginRight: "auto" }, ref },
+            return e("div", { className: "periodo-selectedTask", style: { marginRight: "auto" }, ref },
                 e("button", { className: "iconbtn periodo-trigger", onClick: () => setOpen(!open), title: "Filtrar por período" },
                     "◷ ",
                     e("span", { style: { color: "var(--text0)", fontWeight: 500 } }, anioLabel),
@@ -5487,7 +5522,7 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
             ].filter(Boolean);
             const label = selected.length === 2 ? "Inicio y fin" : selected.length === 1 ? selected[0] : "Sin eventos";
 
-            return e("div", { className: "calf-sel", ref },
+            return e("div", { className: "calf-selectedTask", ref },
                 e("button", {
                     className: "iconbtn periodo-trigger calf-trigger",
                     onClick: () => setOpen(!open),
@@ -5522,7 +5557,7 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
            7. VISTAS DE TAREAS
            ══════════════════════════════════════════════════════════════════════ */
         /* ─── BACKLOG ── */
-        function Backlog({ tareas, mmap, tmap, isDark, move, onSel }) {
+        function Backlog({ tareas, subjectsById, taskTypesById, isDark, move, onSel }) {
             const fb = { label: "?", icon: "•", bg: "var(--bg2)", accent: "var(--text2)" };
             const sorted = [...tareas].sort((a, b) => {
                 if (a.estado === "completado" && b.estado !== "completado") return 1;
@@ -5532,7 +5567,7 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
                 return av - bv;
             });
             return e("div", { className: "bl" }, sorted.map(t => {
-                const m = mmap[t.materiaId], tp = tmap[t.tipo] || fb;
+                const m = subjectsById[t.materiaId], tp = taskTypesById[t.tipo] || fb;
                 const alertColor = getAlertColor(t, getAlertas());
                 const isStartAlert = alertColor && alertColor.startsWith("start_");
                 const days = isStartAlert ? daysUntil(t.fechaInicio) : daysUntil(t.fechaLimite);
@@ -5597,7 +5632,7 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
             }));
         }
         /* ─── KANBAN ── */
-        function Kanban({ tareas, mmap, tmap, isDark, move, onSel }) {
+        function Kanban({ tareas, subjectsById, taskTypesById, isDark, move, onSel }) {
             const fb = { label: "?", icon: "•", bg: "var(--bg2)", accent: "var(--text2)" };
             const cols = [
                 { k: "pendiente", label: "Pendiente", dot: "○", c: isDark ? "#a09cf8" : "#4e47b8" },
@@ -5680,8 +5715,8 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
                         }, "Soltar aquí"),
 
                         ct.map(t => {
-                            const m = mmap[t.materiaId];
-                            const tp = tmap[t.tipo] || fb;
+                            const m = subjectsById[t.materiaId];
+                            const tp = taskTypesById[t.tipo] || fb;
                             const bs = badgeStyle(tp.bg, tp.accent, isDark);
                             const pct = calcProgress(t);
                             const items = t.items || [];
@@ -5806,7 +5841,7 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
             }));
         }
         /* ─── CALENDAR ── */
-        function Cal({ tareas, mmap, tmap, isDark, month, setMonth, onSel, onMoveTask, showInicio, showFin, setShowInicio, setShowFin }) {
+        function Cal({ tareas, subjectsById, taskTypesById, isDark, month, setMonth, onSel, onMoveTask, showInicio, showFin, setShowInicio, setShowFin }) {
             const y = month.getFullYear(), m = month.getMonth();
             const today = new Date(); today.setHours(0, 0, 0, 0);
             const alertas = getAlertas();
@@ -5893,8 +5928,8 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
 
             function renderEvent(ev, compact = false) {
                 const t = ev.task;
-                const mat = mmap[t.materiaId];
-                const tp = tmap[t.tipo] || { icon: "•" };
+                const mat = subjectsById[t.materiaId];
+                const tp = taskTypesById[t.tipo] || { icon: "•" };
                 const alert = ev.kind === "fin" ? getAlertColor(t, alertas) : null;
                 const bg = ev.kind === "fin"
                     ? (alert ? ALERT_COLORS[alert].bg : (mat ? mat.color + "22" : "var(--bg2)"))
@@ -6318,18 +6353,18 @@ e("div", { className: "calgrid" },
                     return;
                 }
                 
-                const imp = historial[idx];
+                const importPlannerBackup = historial[idx];
                 
                 // Intentar emparejar la materia automáticamente por nombre
                 const materiaMatch = materias.find(m => 
-                    m.nombre.toLowerCase().trim() === imp.materia.toLowerCase().trim()
+                    m.nombre.toLowerCase().trim() === importPlannerBackup.materia.toLowerCase().trim()
                 );
                 if (materiaMatch) s("materiaId", materiaMatch.id);
 
                 // Mapear solo los campos importantes al JSON del textarea
-                const tareasSimplificadas = imp.tareas.map(t => ({
+                const tareasSimplificadas = importPlannerBackup.tareas.map(t => ({
                     titulo: t.titulo,
-                    descripcion: t.descripcion || `Sincro: ${imp.materia}`,
+                    descripcion: t.descripcion || `Sincro: ${importPlannerBackup.materia}`,
                     fechaLimite: t.fechaLimite,
                     hora: t.hora || "23:59"
                 }));
@@ -6476,7 +6511,7 @@ e("div", { className: "calgrid" },
                                 style: { border: "1px solid var(--border2)", background: "var(--bg1)" }
                             },
                                 e("option", { value: "" }, historial.length > 0 ? "-- Seleccionar materia detectada --" : "No hay importaciones disponibles"),
-                                historial.map((imp, idx) => e("option", { key: idx, value: idx }, `${imp.materia} (${imp.tareas.length} tareas)`))
+                                historial.map((importPlannerBackup, idx) => e("option", { key: idx, value: idx }, `${importPlannerBackup.materia} (${importPlannerBackup.tareas.length} tareas)`))
                             )
                         ),
 
@@ -6526,14 +6561,14 @@ e("div", { className: "calgrid" },
 
         /* ─── POMODORO CONTEXT POPUP ── */
         function PomoContextPopup({ materia, tareas, tipos, onStart, onClose }) {
-            const [sel, setSel] = useState("none");
+            const [selectedTask, setSel] = useState("none");
             const [tituloSesion, setTituloSesion] = useState("");
             const [nuevaTareaTitulo, setNuevaTareaTitulo] = useState("");
             const tareasDeMateria = tareas.filter(t => t.materiaId === materia.id && t.estado !== "completado");
             function arrancar() {
                 onStart({
-                    mode: sel === "new" ? "new" : (sel === "none" ? "none" : "task"),
-                    tareaId: sel !== "new" && sel !== "none" ? sel : null,
+                    mode: selectedTask === "new" ? "new" : (selectedTask === "none" ? "none" : "task"),
+                    tareaId: selectedTask !== "new" && selectedTask !== "none" ? selectedTask : null,
                     sessionTitle: tituloSesion.trim(),
                     quickTaskTitle: nuevaTareaTitulo.trim()
                 });
@@ -6565,7 +6600,7 @@ e("div", { className: "calgrid" },
                             e("label", { className: "fl" }, "ASOCIACIÓN (OPCIONAL)"),
                             e("select", {
                                 className: "fi",
-                                value: sel,
+                                value: selectedTask,
                                 onChange: ev => setSel(ev.target.value)
                             },
                                 e("option", { value: "none" }, "Sin tarea específica"),
@@ -6573,7 +6608,7 @@ e("div", { className: "calgrid" },
                                 e("option", { value: "new" }, "+ Crear tarea rápida")
                             )
                         ),
-                        sel === "new" && e("div", { className: "fg" },
+                        selectedTask === "new" && e("div", { className: "fg" },
                             e("label", { className: "fl" }, "NOMBRE DE LA TAREA RÁPIDA (OPCIONAL)"),
                             e("input", {
                                 className: "fi", type: "text",
@@ -6726,7 +6761,7 @@ e("div", { className: "calgrid" },
             return h > 0 ? (mn > 0 ? `${h}h ${mn}min` : `${h}h`) : `${mn}min`;
         }
 
-        function PomoWidget({ session, mmap, tareaObj, onStop, onCancel, materias, sesiones }) {
+        function PomoWidget({ session, subjectsById, tareaObj, onStop, onCancel, materias, sesiones }) {
             const [paused, setPaused] = useState(false);
             const [studySecs, setStudySecs] = useState(0);
             const [pauseSecs, setPauseSecs] = useState(0);
@@ -6749,7 +6784,7 @@ e("div", { className: "calgrid" },
                 return () => clearInterval(id);
             }, [paused]);
 
-            const mat = mmap[session.materiaId];
+            const mat = subjectsById[session.materiaId];
             const slotObj = calcSlotObjetivo(session, materias || [], sesiones || []);
             const [showTooltip, setShowTooltip] = useState(null);
             function fmt(n) { return String(n).padStart(2, "0"); }
@@ -7246,9 +7281,9 @@ e("div", { className: "calgrid" },
             );
         }
 
-        function MateriasView({ materias, sesiones, tareas, tmap, isDark, onStartPomo, onEditMateria, onManualSession, onEditSession, onDeleteSession }) {
+        function MateriasView({ materias, sesiones, tareas, taskTypesById, isDark, onStartPomo, onEditMateria, onManualSession, onEditSession, onDeleteSession }) {
             const [selId, setSelId] = useState(null);
-            const sel = materias.find(m => m.id === selId) || null;
+            const selectedTask = materias.find(m => m.id === selId) || null;
             function toggleSel(id) { setSelId(prev => prev === id ? null : id); }
 
             const weekStart = useMemo(() => getWeekStart(), []);
@@ -8051,7 +8086,7 @@ e("div", { className: "calgrid" },
             );
         }
 
-        function HoyView({ materias, sesiones, tareas, isDark, onStartPomo, mmap, tmap, onEditObjetivos, franjas, onSaveFranjas, onEditMateria, urgentTasks, onMoveSlot }) {
+        function HoyView({ materias, sesiones, tareas, isDark, onStartPomo, subjectsById, taskTypesById, onEditObjetivos, franjas, onSaveFranjas, onEditMateria, urgentTasks, onMoveSlot }) {
             const [now, setNow] = useState(new Date());
             const [editFranjas, setEditFranjas] = useState(false);
             const [editSlotCell, setEditSlotCell] = useState(null); // {dia,fid}
@@ -9185,6 +9220,13 @@ const GUIDE_SECTIONS = [
 
 
         /* PHASE 5 — helpers para efectos y layout */
+        /**
+         * Calcula el offset vertical real que la app debe reservar para el chrome fijo.
+         * Contrato:
+         * - sólo calcula
+         * - no toca DOM
+         * - debe ser estable frente a zoom y cambios de viewport
+         */
         function computeChromeOffsetValue({ chromeExpanded, panelBottom, peekBottom }) {
             const occupiedHeight = chromeExpanded ? panelBottom : peekBottom;
             const safeGap = chromeExpanded ? 14 : 12;
@@ -9203,6 +9245,12 @@ const GUIDE_SECTIONS = [
             return franjaMode === 6 ? DEFAULT_FRANJAS_6 : DEFAULT_FRANJAS_3;
         }
 
+        /**
+         * Decide si el planner actual debe persistirse en almacenamiento local.
+         * Intención:
+         * - evitar guardar el modo welcome
+         * - evitar tratar demo como si fueran datos reales persistidos por defecto
+         */
         function shouldPersistPlannerLocally({ appMode, isDemo }) {
             return appMode !== "welcome" && !isDemo;
         }
@@ -9221,6 +9269,10 @@ const GUIDE_SECTIONS = [
 
 
         /* PHASE 6 — componentes internos extraídos sin separar archivos */
+        /**
+         * Puerta de entrada visual al onboarding/welcome.
+         * Mantiene junta la welcome screen y la confirmación contextual usada en reingresos.
+         */
         function WelcomeGate({
             enterLocal,
             enterDemo,
@@ -9257,6 +9309,10 @@ const GUIDE_SECTIONS = [
             );
         }
 
+        /**
+         * Barra de filtros contextual para backlog / kanban / calendario.
+         * No se renderiza en hoy / semana / materias.
+         */
         function PlannerFiltersBar({
             view,
             fm,
@@ -9300,6 +9356,13 @@ const GUIDE_SECTIONS = [
             );
         }
 
+        /**
+         * Shell visual del chrome fijo de la app.
+         * Responsabilidad:
+         * - header, navegación, toolbar superior y barra de filtros contextual
+         * No debe:
+         * - resolver lógica de datos del planner
+         */
         function PlannerChromeShell({
             appRef,
             chromeShellRef,
@@ -9320,8 +9383,8 @@ const GUIDE_SECTIONS = [
             setSettings,
             data,
             dirty,
-            onExported,
-            imp,
+            markCurrentPlannerAsExported,
+            importPlannerBackup,
             driveConnected,
             syncStatus,
             autoSave,
@@ -9414,7 +9477,7 @@ const GUIDE_SECTIONS = [
                                 }, "?"),
                                 e(ConfigBtn, { onOpenSettings: (tab) => setSettings(tab || "materias") }),
                                 e(DatosBtn, {
-                                    data, dirty, onExported, imp,
+                                    data, dirty, markCurrentPlannerAsExported, importPlannerBackup,
                                     driveConnected, syncStatus, autoSave, showSync,
                                     setShowSync, handleDriveConnect, handleDriveDisconnect,
                                     handleDriveSaveNow, handleDriveLoad, toggleAutoSave,
@@ -9446,6 +9509,11 @@ const GUIDE_SECTIONS = [
 function App() {
             const saved = localStorage.getItem("uai-theme") || "noche";
                         /* PHASE 0 ESTADO — apariencia / modo de app / fuente de datos */
+            /* PHASE 10 — contrato del estado raíz
+             * - este bloque define sólo estado fuente de verdad
+             * - el estado derivado debería seguir resolviéndose con useMemo/helpers
+             * - evitar sumar side-effects acá
+             */
 const [themeId, setThemeId] = useState(saved);
             // App mode: "welcome" | "local" | "drive"
             const [appMode, setAppMode] = useState(() => PlannerStorage.getMode());
@@ -9453,6 +9521,7 @@ const [themeId, setThemeId] = useState(saved);
             const [data, setData] = useState(() => PlannerStorage.loadBootData());
             const [isDemo, setIsDemo] = useState(false);
                         /* PHASE 0 ESTADO — navegación principal, filtros y calendario */
+            /* PHASE 9 — limpieza semántica: nombres de variables más expresivos en flujos críticos y mapa de entidades. */
 const [view, setView] = useState(() => localStorage.getItem("uai-last-view") || "hoy");
             const [fm, setFm] = useState("all");
             const [ft, setFt] = useState("all");
@@ -9460,7 +9529,7 @@ const [view, setView] = useState(() => localStorage.getItem("uai-last-view") || 
             const [calShowInicio, setCalShowInicio] = useState(true);
             const [calShowFin, setCalShowFin] = useState(true);
             const [calM, setCalM] = useState(new Date(2026, 2, 1));
-            // store only the task ID so sel auto-updates when data changes
+            // store only the task ID so selectedTask auto-updates when data changes
             const [selId, setSelId] = useState(null);
             const [form, setForm] = useState(null);
                         /* PHASE 0 ESTADO — modales principales, importación, configuración, conflictos y ayuda */
@@ -9511,6 +9580,8 @@ const [importTasksOpen, setImportTasksOpen] = useState(false);
 
                 let raf1 = requestAnimationFrame(syncChromeOffset);
                 let raf2 = requestAnimationFrame(() => requestAnimationFrame(syncChromeOffset));
+                const timeoutSoon = window.setTimeout(syncChromeOffset, 0);
+                const timeoutAfterMount = window.setTimeout(syncChromeOffset, 180);
                 syncChromeOffset();
 
                 const ro = new ResizeObserver(syncChromeOffset);
@@ -9537,6 +9608,8 @@ const [importTasksOpen, setImportTasksOpen] = useState(false);
                 return () => {
                     cancelAnimationFrame(raf1);
                     cancelAnimationFrame(raf2);
+                    window.clearTimeout(timeoutSoon);
+                    window.clearTimeout(timeoutAfterMount);
                     ro.disconnect();
                     mo.disconnect();
                     window.removeEventListener("resize", onViewportChange);
@@ -9546,7 +9619,7 @@ const [importTasksOpen, setImportTasksOpen] = useState(false);
                         window.visualViewport.removeEventListener("scroll", onViewportChange);
                     }
                 };
-            }, [chromeExpanded, view, fm, ft, fa, data.tareas.length]);
+            }, [appMode, chromeExpanded, chromePinned, view, fm, ft, fa, syncStatus, data.tareas.length]);
 
             function showChromeTemporarily() {
                 if (!chromePinned) setChromeHover(true);
@@ -9610,6 +9683,10 @@ const autoSaveTimer = useRef(null);
             const [dirty, setDirty] = useState(false);
 
                         /* PHASE 0 EFECTOS — persistencia, bootstrap, autosave, layout y sincronización */
+            /* PHASE 10 — efectos del estado raíz
+             * Regla: cada efecto debería tener una única responsabilidad observable.
+             * Si un efecto empieza a tocar persistencia + layout + navegación, ya no pertenece acá.
+             */
 useEffect(() => { applyTheme(themeId); }, [themeId]);
             useEffect(() => {
                 window.__openSettings = (tab) => setSettings(tab || "materias");
@@ -9663,12 +9740,12 @@ useEffect(() => { applyTheme(themeId); }, [themeId]);
 
             const themeObj = THEMES.find(t => t.id === themeId) || THEMES[0];
             const isDark = themeObj.isDark;
-            const mmap = useMemo(() => Object.fromEntries(data.materias.map(m => [m.id, m])), [data]);
+            const subjectsById = useMemo(() => Object.fromEntries(data.materias.map(subject => [subject.id, subject])), [data]);
             const tipos = data.tipos || DEFAULT_TIPOS;
-            const tmap = useMemo(() => Object.fromEntries(tipos.map(t => [t.id, t])), [tipos]);
+            const taskTypesById = useMemo(() => Object.fromEntries(tipos.map(taskType => [taskType.id, taskType])), [tipos]);
 
-            // derive sel from data so it auto-updates on toggleItem
-            const sel = selId ? data.tareas.find(t => t.id === selId) || null : null;
+            // derive selectedTask from data so it auto-updates on toggleItem
+            const selectedTask = selId ? data.tareas.find(task => task.id === selId) || null : null;
 
             function move(id, s) { setData(d => ({ ...d, tareas: d.tareas.map(t => t.id === id ? { ...t, estado: s } : t) })); }
             function moveTaskToDate(id, fecha, field = "fechaLimite") {
@@ -9702,6 +9779,13 @@ useEffect(() => { applyTheme(themeId); }, [themeId]);
                 setForm(null);
             }
             function del(id) { setData(d => ({ ...d, tareas: d.tareas.filter(t => t.id !== id) })); setSelId(null); }
+            /**
+             * Orquesta la conexión a Drive.
+             * Riesgos que cubre:
+             * - archivo remoto inexistente
+             * - conflicto local/remoto
+             * - sesión válida pero bootstrap incompleto de email/modo
+             */
             function handleDriveConnect(fromWelcome = false) {
                 PlannerDriveSync.connect((token, err) => {
                     if (err) { setSyncMsg("Error al conectar: " + err); return; }
@@ -9765,6 +9849,10 @@ useEffect(() => { applyTheme(themeId); }, [themeId]);
 
                         /* PHASE 0 FLUJO CRÍTICO — desconexión de Drive preservando continuidad local */
 function handleDriveDisconnect() {
+                /* Contrato:
+                 * - nunca debe mandar al onboarding
+                 * - debe preservar continuidad local con el dataset actual
+                 */
                 // Disconnect without losing the current planner: keep current data locally and continue in local mode.
                 const currentData = data;
                 PlannerDriveSync.disconnect();
@@ -9795,6 +9883,10 @@ function handleDriveDisconnect() {
                     .then(() => { PlannerDriveSync.markSaved(); setSyncStatus("saved"); setDirty(false); lastExp.current = hashData(data); })
                     .catch(err => { setSyncStatus("error"); setSyncMsg(err.message); });
             }
+            /**
+             * Carga el planner desde Drive y lo normaliza antes de hacer commit.
+             * Debe dejar el estado limpio y sin errores de import previos si la carga fue válida.
+             */
             async function handleDriveLoad() {
                 try {
                     setSyncStatus("saving");
@@ -9906,6 +9998,15 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
             }
 
                         /* PHASE 8 — commit central del estado del planner */
+                /**
+             * Punto central de commit del estado del planner.
+             * Contrato:
+             * - aplica dataset, modo demo/real, persistencia y side-effects controlados
+             * - deja lastExp/dirty consistentes cuando markClean=true
+             * - cualquier flujo que "reemplaza" el planner debería pasar por acá
+             * Riesgo histórico que evita:
+             * - que onboarding, reset, importación y Drive apliquen datasets con side-effects distintos
+             */
             function commitPlannerState({
                 nextData,
                 nextDataMode = getCurrentPlannerDataMode(nextData),
@@ -10020,6 +10121,11 @@ function openPlannerAfterOnboarding(nextData, { demo = false } = {}) {
             /* Debe mantenerse consistente entre onboarding, reset de datos y futuros flujos de importación. */
 
 /* PHASE 3 — transiciones sensibles centralizadas */
+            /**
+             * Construye un plan declarativo para una transición sensible de datos.
+             * No ejecuta nada por sí misma.
+             * Sirve para que reset/onboarding compartan criterios antes de abrir confirmaciones.
+             */
             function buildPlannerDataTransitionPlan(targetKind, { context = "reset" } = {}) {
                 const basePlan = resolvePlannerDataChangePlan({
                     currentData: data,
@@ -10043,6 +10149,10 @@ function openPlannerAfterOnboarding(nextData, { demo = false } = {}) {
                 applyPlannerDataChoice(plan.targetKind, { context: plan.context });
             }
 
+            /**
+             * Ejecuta un plan de transición ya resuelto.
+             * Debe mantenerse chico: decidir skip / aplicación directa / confirmación.
+             */
             function executePlannerDataTransition(plan) {
                 if (plan.context === "reset") {
                     setResetModal(false);
@@ -10088,6 +10198,60 @@ function exitOnboardingToApp() {
                 setOnboardingReturnToApp(false);
             }
 
+            /* PHASE 11 — controladores internos por dominio
+               Objetivo: que App orqueste dominios claros en vez de invocar handlers sueltos.
+               Regla: los controladores no inventan lógica nueva; sólo agrupan y exponen flujos existentes. */
+            const plannerTransitionController = {
+                requestDataChange(targetDataMode, options = {}) {
+                    requestPlannerDataChange(targetDataMode, options);
+                },
+                resetToEmpty() {
+                    doResetEmpty();
+                },
+                resetToDemo() {
+                    doResetSample();
+                }
+            };
+
+            const plannerDriveController = {
+                connect(fromWelcome = false) {
+                    handleDriveConnect(fromWelcome);
+                },
+                disconnect() {
+                    handleDriveDisconnect();
+                },
+                saveNow() {
+                    handleDriveSaveNow();
+                },
+                loadNow() {
+                    return handleDriveLoad();
+                },
+                toggleAutoSave(value) {
+                    toggleAutoSave(value);
+                }
+            };
+
+            const plannerImportController = {
+                importBackup() {
+                    importPlannerBackup();
+                },
+                markExported() {
+                    markCurrentPlannerAsExported();
+                }
+            };
+
+            const plannerOnboardingController = {
+                enterEmpty() {
+                    enterLocal();
+                },
+                enterDemo() {
+                    enterDemo();
+                },
+                exit() {
+                    exitOnboardingToApp();
+                }
+            };
+
             function startPomoFromTask(task) {
                 setPomoSession({ materiaId: task.materiaId, tareaId: task.id });
                 setSelId(null);
@@ -10132,7 +10296,13 @@ function exitOnboardingToApp() {
                 setData(d => ({ ...d, sesiones: [...(d.sesiones || []), ses] }));
                 setPomoSession(null);
             }
-            function imp() {
+            /**
+             * Importa un backup completo del planner desde archivo local.
+             * Intención:
+             * - delegar parseo/normalización al servicio
+             * - delegar aplicación del dataset al commit central
+             */
+            function importPlannerBackup() {
                 PlannerImportExport.openPlannerFilePicker({
                     onData: (importedPlannerData) => {
                         commitPlannerState({
@@ -10146,7 +10316,14 @@ function exitOnboardingToApp() {
                 // If importing from welcome, switch to local mode
                 if (appMode === "welcome") { PlannerStorage.setMode("local"); setAppMode("local"); }
             }
-            function onExported() { lastExp.current = hashData(data); setDirty(false); }
+            /**
+             * Marca el dataset actual como exportado.
+             * No exporta por sí misma: sólo sincroniza lastExp/dirty con el estado actual.
+             */
+            function markCurrentPlannerAsExported() {
+                lastExp.current = hashData(data);
+                setDirty(false);
+            }
             // materias visibles según filtro de año/período
             const materiasFiltradas = useMemo(() => data.materias.filter(m => {
                 if (fAnio !== "all" && m.anio !== parseInt(fAnio)) return false;
@@ -10179,11 +10356,15 @@ function exitOnboardingToApp() {
                 );
             }
 
-            // Show welcome screen
+                        /* PHASE 10 — regla de render
+             * Welcome y app principal deben permanecer separados para evitar overlays raros
+             * y para que los modales del onboarding se monten en el árbol correcto.
+             */
+// Show welcome screen
             if (appMode === "welcome") {
                 return e(WelcomeGate, {
-                    enterLocal,
-                    enterDemo,
+                    enterLocal: plannerOnboardingController.enterEmpty,
+                    enterDemo: plannerOnboardingController.enterDemo,
                     setShowHelp,
                     syncMsg,
                     onboardingReturnToApp,
@@ -10213,18 +10394,18 @@ function exitOnboardingToApp() {
                 setSettings,
                 data,
                 dirty,
-                onExported,
-                imp,
+                markCurrentPlannerAsExported: plannerImportController.markExported,
+                importPlannerBackup: plannerImportController.importBackup,
                 driveConnected,
                 syncStatus,
                 autoSave,
                 showSync,
                 setShowSync,
-                handleDriveConnect,
-                handleDriveDisconnect,
-                handleDriveSaveNow,
-                handleDriveLoad,
-                toggleAutoSave,
+                handleDriveConnect: plannerDriveController.connect,
+                handleDriveDisconnect: plannerDriveController.disconnect,
+                handleDriveSaveNow: plannerDriveController.saveNow,
+                handleDriveLoad: plannerDriveController.loadNow,
+                toggleAutoSave: plannerDriveController.toggleAutoSave,
                 setResetModal,
                 userEmail,
                 impErr,
@@ -10241,7 +10422,7 @@ function exitOnboardingToApp() {
                 setImportTasksOpen
             },
                     view === "hoy" && e(HoyView, {
-                        materias: materiasFiltradas, sesiones: data.sesiones || [], tareas: data.tareas, isDark, onStartPomo: startPomoFromMateria, mmap, tmap, onEditObjetivos: setEditObjetivoM, franjas, onSaveFranjas: saveFranjas, onEditMateria: editMateriaHoras, urgentTasks,
+                        materias: materiasFiltradas, sesiones: data.sesiones || [], tareas: data.tareas, isDark, onStartPomo: startPomoFromMateria, subjectsById, taskTypesById, onEditObjetivos: setEditObjetivoM, franjas, onSaveFranjas: saveFranjas, onEditMateria: editMateriaHoras, urgentTasks,
                         onMoveSlot: (materiaId, fromDia, fromFid, toDia, toFid) => {
                             setData(d => ({
                                 ...d, materias: d.materias.map(m => {
@@ -10267,15 +10448,15 @@ function exitOnboardingToApp() {
                             }));
                         }, franjas
                     }),
-                    view === "backlog" && e(Backlog, { tareas: filtered, mmap, tmap, isDark, move, onSel: id => setSelId(id) }),
-                    view === "kanban" && e(Kanban, { tareas: filtered, mmap, tmap, isDark, move, onSel: id => setSelId(id) }),
-                    view === "calendar" && e(Cal, { tareas: filtered, mmap, tmap, isDark, month: calM, setMonth: setCalM, onSel: id => setSelId(id), onMoveTask: moveTaskToDate, showInicio: calShowInicio, showFin: calShowFin, setShowInicio: setCalShowInicio, setShowFin: setCalShowFin }),
-                    view === "materias" && e(MateriasView, { materias: materiasFiltradas, sesiones: data.sesiones || [], tareas: data.tareas, tmap, isDark, onStartPomo: startPomoFromMateria, onEditMateria: editMateriaHoras, onManualSession: setManualSession, onEditSession: editSession, onDeleteSession: deleteSession })
+                    view === "backlog" && e(Backlog, { tareas: filtered, subjectsById, taskTypesById, isDark, move, onSel: id => setSelId(id) }),
+                    view === "kanban" && e(Kanban, { tareas: filtered, subjectsById, taskTypesById, isDark, move, onSel: id => setSelId(id) }),
+                    view === "calendar" && e(Cal, { tareas: filtered, subjectsById, taskTypesById, isDark, month: calM, setMonth: setCalM, onSel: id => setSelId(id), onMoveTask: moveTaskToDate, showInicio: calShowInicio, showFin: calShowFin, setShowInicio: setCalShowInicio, setShowFin: setCalShowFin }),
+                    view === "materias" && e(MateriasView, { materias: materiasFiltradas, sesiones: data.sesiones || [], tareas: data.tareas, taskTypesById, isDark, onStartPomo: startPomoFromMateria, onEditMateria: editMateriaHoras, onManualSession: setManualSession, onEditSession: editSession, onDeleteSession: deleteSession })
                 ,
-                sel && e(TaskModal, {
-                    task: sel, mat: mmap[sel.materiaId], tipo: tmap[sel.tipo], isDark, move, toggleItem, onStartPomo: startPomoFromTask, sesiones: data.sesiones || [],
+                selectedTask && e(TaskModal, {
+                    task: selectedTask, mat: subjectsById[selectedTask.materiaId], tipo: taskTypesById[selectedTask.tipo], isDark, move, toggleItem, onStartPomo: startPomoFromTask, sesiones: data.sesiones || [],
                     tareas: data.tareas,
-                    onClose: () => setSelId(null), onEdit: () => { setForm(sel); setSelId(null); }, onDel: del,
+                    onClose: () => setSelId(null), onEdit: () => { setForm(selectedTask); setSelId(null); }, onDel: del,
                     onEditSession: editSession,
                     onDeleteSession: deleteSession
                 }),
@@ -10333,8 +10514,8 @@ function exitOnboardingToApp() {
 
                 resetModal && e(ResetModal, {
                     driveConnected,
-                    onChooseEmpty: doResetEmpty,
-                    onChooseSample: doResetSample,
+                    onChooseEmpty: plannerTransitionController.resetToEmpty,
+                    onChooseSample: plannerTransitionController.resetToDemo,
                     onClose: () => { setResetModal(false); }
                 }),
                 appMode !== "welcome" && showHelp && e(HelpGuide, { onClose: closeHelp, onRestartOnboarding: restartOnboarding }),
@@ -10360,7 +10541,7 @@ function exitOnboardingToApp() {
                 pomoContext && e(PomoContextPopup, { materia: pomoContext, tareas: data.tareas, tipos, onStart: handlePomoContextStart, onClose: () => setPomoContext(null) }),
                 manualSession && e(ManualSessionModal, { materia: manualSession, tareas: data.tareas, onSave: saveManualSession, onClose: () => setManualSession(null) }),
 
-                pomoSession && e(PomoWidget, { session: pomoSession, mmap, tmap, tareaObj: pomoSession.tareaId ? data.tareas.find(t => t.id === pomoSession.tareaId) : null, onStop: stopPomo, onCancel: () => setPomoSession(null), materias: data.materias, sesiones: data.sesiones || [] }),
+                pomoSession && e(PomoWidget, { session: pomoSession, subjectsById, taskTypesById, tareaObj: pomoSession.tareaId ? data.tareas.find(t => t.id === pomoSession.tareaId) : null, onStop: stopPomo, onCancel: () => setPomoSession(null), materias: data.materias, sesiones: data.sesiones || [] }),
                 e(SchemaHint, null)
             );
         }
