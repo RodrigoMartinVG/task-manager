@@ -178,7 +178,9 @@
         }
 
 
-        /* ══ ONBOARDING REDESIGN ══ */
+        /* PHASE 0 MAPA: UI onboarding y bienvenida guiada */
+        /* Riesgo: alto impacto visual y de flujo inicial. No tocar lógica aquí sin revisar reentrada, ayuda y selección de datos. */
+/* ══ ONBOARDING REDESIGN ══ */
         @keyframes ob-fade-up {
             from { opacity: 0; transform: translateY(18px); }
             to   { opacity: 1; transform: translateY(0); }
@@ -735,7 +737,9 @@
             .ob-progress-step { width: 100%; justify-content: center; }
         }
 
-        /* ══ HELP GUIDE REDESIGN ══ */
+        /* PHASE 0 MAPA: guía de ayuda, índice lateral y navegación interna */
+        /* Riesgo: overlays, scroll interno, convivencia con onboarding y cierre contextual. */
+/* ══ HELP GUIDE REDESIGN ══ */
         .hg-overlay {
             /* uses existing .ov styles, just overriding modal */
         }
@@ -4098,7 +4102,10 @@
             });
         }
 
-        function driveIsConnected() {
+                /* PHASE 0 MAPA: integración Google Drive / OAuth / sincronización remota */
+        /* Riesgo: conflictos local vs Drive, expiración de sesión, subida automática, desconexión segura. */
+
+function driveIsConnected() {
             return !!driveState.accessToken && Date.now() < (driveState.tokenExpiry || 0);
         }
 
@@ -4177,7 +4184,7 @@
 
         function driveSaveAsync(data, onStatus) {
             onStatus("saving");
-            driveSave(data)
+            PlannerDriveSync.save(data)
                 .then(() => onStatus("saved"))
                 .catch(err => onStatus("error", err.message));
         }
@@ -4203,8 +4210,35 @@
         const LS_EMAIL_KEY = "uai-planner-email";
         const LS_MODE_KEY = "uai-planner-mode"; // "local" | "drive"
 
+        /* PHASE 1: vocabulario canónico del dominio.
+           Objetivo: que la app deje de razonar con strings sueltos y condiciones ambiguas. */
+        const DATA_MODE_NONE = "none";
+        const DATA_MODE_EMPTY = "empty";
+        const DATA_MODE_DEMO = "demo";
+        const DATA_MODE_REAL = "real";
+
+        const STORAGE_MODE_LOCAL = "local";
+        const STORAGE_MODE_DRIVE = "drive";
+
+        const FLOW_CONTEXT = Object.freeze({
+            ONBOARDING_FIRST_RUN: "onboarding_first_run",
+            ONBOARDING_REVISIT: "onboarding_revisit",
+            DATA_RESET: "data_reset",
+            DRIVE_CONNECT: "drive_connect",
+            DRIVE_DISCONNECT: "drive_disconnect",
+            FULL_IMPORT: "full_import"
+        });
+
         function lsDataKey(email) {
             return email ? "uai-planner-data-v" + DATA_VERSION + "-" + email : "uai-planner-data-v" + DATA_VERSION;
+        }
+
+        function clonePlannerData(data) {
+            return JSON.parse(JSON.stringify(data));
+        }
+
+        function createEmptyPlannerData() {
+            return { materias: [], tipos: DEFAULT_TIPOS, tareas: [], sesiones: [] };
         }
 
         /* Guarda data en localStorage bajo una key que incluye el email del usuario
@@ -4232,8 +4266,128 @@
             try { localStorage.removeItem(lsDataKey(email)); } catch (e) { }
         }
 
+        function normalizeImportedPlannerData(rawData) {
+            const cloned = clonePlannerData(rawData || {});
+            if (!cloned.materias || !cloned.tareas) throw new Error("Formato inválido");
+            if (!cloned.tipos) cloned.tipos = DEFAULT_TIPOS;
+            if (!cloned.sesiones) cloned.sesiones = [];
+            cloned.tareas = (cloned.tareas || []).map(t => ({ items: [], obligatorio: true, ...t }));
+            return cloned;
+        }
+
+        /* PHASE 7 — servicios internos para persistencia, import/export y Drive */
+        const PlannerStorage = {
+            getMode() {
+                return localStorage.getItem(LS_MODE_KEY) || "welcome";
+            },
+            setMode(mode) {
+                localStorage.setItem(LS_MODE_KEY, mode);
+            },
+            getEmail() {
+                return localStorage.getItem(LS_EMAIL_KEY) || null;
+            },
+            setEmail(email) {
+                PlannerStorage.setEmail(email);
+            },
+            clearEmail() {
+                PlannerStorage.clearEmail();
+            },
+            saveLocal(data, email) {
+                saveToLS(data, email);
+            },
+            loadLocal(email) {
+                return loadFromLS(email);
+            },
+            clearLocal(email) {
+                clearLS(email);
+            },
+            loadBootData() {
+                const mode = PlannerStorage.getMode();
+                const email = PlannerStorage.getEmail();
+                if (mode === STORAGE_MODE_LOCAL) {
+                    return PlannerStorage.loadLocal(null) || EMPTY_DATA;
+                }
+                if (mode === STORAGE_MODE_DRIVE && email) {
+                    return PlannerStorage.loadLocal(email) || EMPTY_DATA;
+                }
+                return EMPTY_DATA;
+            }
+        };
+
+        const PlannerDriveSync = {
+            ready() {
+                return driveReady();
+            },
+            isConnected() {
+                return driveIsConnected();
+            },
+            connect(callback) {
+                driveConnect(callback);
+            },
+            connectSilent(callback) {
+                driveConnectSilent(callback);
+            },
+            disconnect() {
+                PlannerDriveSync.disconnect();
+            },
+            save(data) {
+                return PlannerDriveSync.save(data);
+            },
+            load() {
+                return driveLoad();
+            },
+            markSaved() {
+                PlannerDriveSync.markSaved();
+            },
+            lastSaved() {
+                return driveLastSaved();
+            }
+        };
+
+        const PlannerImportExport = {
+            normalizePlannerData(rawData) {
+                return normalizeImportedPlannerData(rawData);
+            },
+            downloadPlannerData(data, { prefix = "uai-planner", onDone } = {}) {
+                const ts = new Date().toISOString().slice(0, 16).replace("T", "_").replace(/:/g, "-");
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `${prefix}_${ts}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                if (typeof onDone === "function") onDone();
+            },
+            openPlannerFilePicker({ onData, onError } = {}) {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = ".json";
+                input.onchange = ev => {
+                    const file = ev.target.files && ev.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = rv => {
+                        try {
+                            const parsed = JSON.parse(rv.target.result);
+                            const normalized = PlannerImportExport.normalizePlannerData(parsed);
+                            if (typeof onData === "function") onData(normalized);
+                        } catch (err) {
+                            if (typeof onError === "function") onError(err);
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+                input.click();
+            }
+        };
+
         function isSampleData(data) {
             return data?.tareas?.[0]?.id === "t1";
+        }
+
+        function isDemoData(data) {
+            return isSampleData(data);
         }
 
         function isEmptyData(data) {
@@ -4244,18 +4398,136 @@
             return !!data && !isEmptyData(data) && !isSampleData(data);
         }
 
+        function isRealPlannerData(data) {
+            return hasRealPlannerData(data);
+        }
+
         function hasAnyRealPlannerData(...datasets) {
             return datasets.some(hasRealPlannerData);
         }
 
         function getPlannerDataKind(data) {
-            if (!data) return "none";
-            if (isEmptyData(data)) return "empty";
-            if (isSampleData(data)) return "demo";
-            return "real";
+            if (!data) return DATA_MODE_NONE;
+            if (isEmptyData(data)) return DATA_MODE_EMPTY;
+            if (isSampleData(data)) return DATA_MODE_DEMO;
+            return DATA_MODE_REAL;
         }
 
-        const EMPTY_DATA = { materias: [], tipos: DEFAULT_TIPOS, tareas: [], sesiones: [] };
+        function getCurrentPlannerDataMode(data) {
+            return getPlannerDataKind(data);
+        }
+
+        const EMPTY_DATA = createEmptyPlannerData();
+
+        /* PHASE 2 — reglas puras de negocio para transiciones de datos */
+        function getTargetPlannerData(targetKind) {
+            return clonePlannerData(targetKind === DATA_MODE_DEMO ? SAMPLE : EMPTY_DATA);
+        }
+
+        function shouldReapplySamePlannerDataMode(currentKind, targetKind, currentData) {
+            if (currentKind !== targetKind) return false;
+            if (targetKind === DATA_MODE_DEMO) return true;
+            if (targetKind === DATA_MODE_EMPTY) {
+                return hashData(currentData) !== hashData(EMPTY_DATA);
+            }
+            return false;
+        }
+
+        function shouldRequirePlannerDataChangeConfirm({ context = "reset", onboardingReturnToApp = false } = {}) {
+            const revisitingOnboarding = context === "onboarding" && onboardingReturnToApp;
+            return context === "reset" || revisitingOnboarding;
+        }
+
+        function resolvePlannerDataChangePlan({
+            currentData,
+            targetKind,
+            context = "reset",
+            onboardingReturnToApp = false
+        }) {
+            const currentKind = getCurrentPlannerDataMode(currentData);
+            const sameKind = currentKind === targetKind;
+            const shouldReapplySameKind = shouldReapplySamePlannerDataMode(currentKind, targetKind, currentData);
+            const needsConfirm = shouldRequirePlannerDataChangeConfirm({ context, onboardingReturnToApp });
+            const revisitingOnboarding = context === "onboarding" && onboardingReturnToApp;
+            const effectiveContext = revisitingOnboarding ? "revisit" : context;
+            const nextData = getTargetPlannerData(targetKind);
+            const shouldSkip = sameKind && !shouldReapplySameKind;
+            const shouldApplyDirectly = !shouldSkip && !needsConfirm;
+
+            return {
+                currentKind,
+                targetKind,
+                nextData,
+                sameKind,
+                shouldReapplySameKind,
+                needsConfirm,
+                revisitingOnboarding,
+                effectiveContext,
+                shouldSkip,
+                shouldApplyDirectly
+            };
+        }
+
+        function buildPlannerDataChangeConfirmConfig(plan, { driveConnected = false } = {}) {
+            const isEmptyTarget = plan.targetKind === DATA_MODE_EMPTY;
+            const usingDrive = driveConnected && plan.effectiveContext === "reset";
+            const title = isEmptyTarget ? "Empezar con planner vacío" : "Cargar datos demo";
+            const icon = isEmptyTarget ? "🧹" : "🧪";
+            const tone = isEmptyTarget ? "danger" : "warn";
+            const confirmLabel = isEmptyTarget ? "Sí, continuar con vacío" : "Sí, continuar con demo";
+
+            let message = "";
+            if (plan.currentKind === DATA_MODE_REAL && plan.targetKind === DATA_MODE_EMPTY) {
+                message = usingDrive
+                    ? `Ya hay datos cargados en este planner y también podrían estar sincronizados con Google Drive.
+
+Si seguís, se va a reemplazar el estado actual por un planner vacío.`
+                    : `Ya hay datos cargados en este planner.
+
+Si seguís, se va a reemplazar el estado actual por un planner vacío.`;
+            } else if (plan.currentKind === DATA_MODE_REAL && plan.targetKind === DATA_MODE_DEMO) {
+                message = usingDrive
+                    ? `Ya hay datos cargados en este planner y también podrían estar sincronizados con Google Drive.
+
+Si seguís, se van a reemplazar tus datos actuales por los datos de ejemplo.`
+                    : `Ya hay datos cargados en este planner.
+
+Si seguís, se van a reemplazar tus datos actuales por los datos de ejemplo.`;
+            } else if (plan.currentKind === DATA_MODE_DEMO && plan.targetKind === DATA_MODE_EMPTY) {
+                message = `Ahora mismo tenés cargados los datos demo.
+
+Si seguís, se van a reemplazar por un planner vacío.`;
+            } else if (plan.currentKind === DATA_MODE_EMPTY && plan.targetKind === DATA_MODE_DEMO) {
+                message = `Ahora mismo tenés un planner vacío.
+
+Si seguís, se va a reemplazar el estado actual por los datos de ejemplo.`;
+            } else if (plan.currentKind === DATA_MODE_DEMO && plan.targetKind === DATA_MODE_DEMO) {
+                message = `Ahora mismo ya estás usando los datos demo.
+
+Si seguís, se van a volver a cargar desde cero y se perderán los cambios que hayas hecho sobre ese ejemplo.`;
+            } else if (plan.currentKind === DATA_MODE_EMPTY && plan.targetKind === DATA_MODE_EMPTY) {
+                message = `Ahora mismo ya tenés un planner vacío.
+
+Si seguís, se va a restablecer ese estado vacío y se descartarán los cambios de configuración o estructura que hayas hecho desde entonces.`;
+            } else {
+                message = isEmptyTarget
+                    ? "Se va a reemplazar el estado actual por un planner vacío."
+                    : "Se va a reemplazar el estado actual por los datos de ejemplo.";
+            }
+
+            if (usingDrive) {
+                message += `
+
+Como estás usando Google Drive, el cambio también va a impactar el archivo sincronizado.`;
+            }
+
+            message += `
+
+¿Querés continuar?`;
+
+            return { title, icon, tone, confirmLabel, message };
+        }
+
 
         /* ══════════════════════════════════════════════════════════════════════
            4. SLOTS Y FRANJAS HORARIAS
@@ -5036,12 +5308,7 @@
             useClickOutside(ref, () => setShowSync(false));
 
             function doExport() {
-                const ts = new Date().toISOString().slice(0, 16).replace("T", "_").replace(/:/g, "-");
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a"); a.href = url; a.download = `uai-planner_${ts}.json`; a.click();
-                URL.revokeObjectURL(url);
-                onExported();
+                PlannerImportExport.downloadPlannerData(data, { onDone: onExported });
             }
 
             let badgeClass = "", badgeText = "";
@@ -5066,7 +5333,7 @@
         }
 
         function DatosPopover({ driveConnected, syncStatus, autoSave, dirty, handleDriveConnect, handleDriveDisconnect, onClose, doExport, imp, onReset, userEmail }) {
-            const lastSaved = driveLastSaved();
+            const lastSaved = PlannerDriveSync.lastSaved();
             return e("div", { className: "sync-popover" },
                 e("div", { className: "sync-pop-hd" },
                     e("span", { style: { fontWeight: 600, color: "var(--text0)" } }, "💾 Datos"),
@@ -8466,172 +8733,207 @@ e("div", { className: "calgrid" },
         /* ─── RESET MODAL ── */
 
         
-        function ConfirmModal({ title, message, confirmLabel, cancelLabel, tone, icon, onConfirm, onClose }) {
-            const accentBg = tone === "danger" ? "var(--err-bg)" : "var(--warn-bg)";
-            const accentText = tone === "danger" ? "var(--err-text)" : "var(--warn-text)";
-            const accentBorder = tone === "danger" ? "var(--err-border)" : "var(--warn-border)";
-            const paragraphs = String(message || "").split(/\n\n+/).filter(Boolean);
+        
+        /* PHASE 4 — base visual reutilizable para modales de decisión y confirmación */
+        function ModalShell({ icon, title, onClose, maxWidth = 420, children }) {
             return e("div", { className: "ov", onClick: onClose },
-                e("div", { className: "mod", style: { maxWidth: 430 }, onClick: ev => ev.stopPropagation() },
+                e("div", {
+                    className: "mod",
+                    style: { maxWidth },
+                    onClick: ev => ev.stopPropagation()
+                },
                     e("div", { className: "mhd" },
-                        e("span", {
-                            style: {
-                                width: 30,
-                                height: 30,
-                                borderRadius: 9,
-                                background: accentBg,
-                                color: accentText,
-                                border: `1px solid ${accentBorder}`,
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontSize: 16,
-                                flexShrink: 0
-                            }
-                        }, icon || "⚠"),
-                        e("span", { className: "mtit" }, title || "Confirmar acción"),
+                        icon,
+                        e("span", { className: "mtit" }, title),
                         e("button", { className: "mclose", onClick: onClose }, "✕")
                     ),
-                    e("div", { className: "mbody" },
-                        e("div", {
-                            style: {
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 10,
-                                marginBottom: 18
-                            }
-                        },
-                            ...paragraphs.map((paragraph, idx) =>
-                                e("div", {
-                                    key: idx,
-                                    style: {
-                                        fontSize: 12,
-                                        lineHeight: 1.7,
-                                        color: idx === 1 ? accentText : "var(--text1)",
-                                        padding: idx === 1 ? "10px 12px" : 0,
-                                        background: idx === 1 ? accentBg : "transparent",
-                                        border: idx === 1 ? `1px solid ${accentBorder}` : "none",
-                                        borderRadius: idx === 1 ? 9 : 0
-                                    }
-                                }, paragraph)
-                            )
-                        ),
-                        e("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } },
-                            e("button", { className: "cancbtn", onClick: onClose }, cancelLabel || "Cancelar"),
-                            e("button", {
-                                className: tone === "danger" ? "delbtn" : "savebtn",
-                                style: { width: "auto", minWidth: 150, padding: "9px 16px" },
-                                onClick: onConfirm
-                            }, confirmLabel || "Continuar")
-                        )
-                    )
+                    e("div", { className: "mbody" }, children)
                 )
             );
         }
 
-        function ResetModal({ driveConnected, onChooseEmpty, onChooseSample, onClose }) {
-            return e("div", { className: "ov", onClick: onClose },
-                e("div", { className: "mod", style: { maxWidth: 420 }, onClick: ev => ev.stopPropagation() },
-                    e("div", { className: "mhd" },
-                        e("span", { style: { fontSize: 20 } }, "🗑"),
-                        e("span", { className: "mtit" }, "Resetear datos"),
-                        e("button", { className: "mclose", onClick: onClose }, "✕")
-                    ),
-                    e("div", { className: "mbody" },
+        function ModalNotice({ children, tone = "neutral", style = {} }) {
+            const toneStyles = tone === "warn"
+                ? { background: "var(--warn-bg)", border: "1px solid var(--warn-border)", color: "var(--warn-text)" }
+                : tone === "danger"
+                    ? { background: "var(--err-bg)", border: "1px solid var(--err-border)", color: "var(--err-text)" }
+                    : { background: "var(--bg2)", border: "1px solid var(--border)", color: "var(--text2)" };
+
+            return e("div", {
+                style: {
+                    fontSize: 11,
+                    lineHeight: 1.7,
+                    marginBottom: 14,
+                    padding: "8px 10px",
+                    borderRadius: 5,
+                    ...toneStyles,
+                    ...style
+                }
+            }, children);
+        }
+
+        function ChoiceCard({ title, description, icon, tone = "neutral", onClick, meta }) {
+            const toneStyles = tone === "info"
+                ? { background: "var(--info-bg)", border: "1px solid var(--accent)", color: "var(--info-text)" }
+                : tone === "danger"
+                    ? { background: "var(--err-bg)", border: "1px solid var(--err-border)", color: "var(--err-text)" }
+                    : { background: "var(--bg2)", border: "1px solid var(--border2)", color: "var(--text0)" };
+
+            return e("button", {
+                onClick,
+                style: {
+                    ...toneStyles,
+                    padding: "12px 16px",
+                    borderRadius: 7,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    fontSize: 13,
+                    textAlign: "left",
+                    transition: "all .15s"
+                }
+            },
+                e("div", { style: { fontWeight: 600, marginBottom: 3 } }, `${icon ? icon + " " : ""}${title}`),
+                e("div", { style: { fontSize: 11, color: "var(--text2)" } }, description),
+                meta ? e("div", { style: { fontSize: 11, color: "var(--text2)", marginTop: 4 } }, meta) : null
+            );
+        }
+
+function ConfirmModal({ title, message, confirmLabel, cancelLabel, tone, icon, onConfirm, onClose }) {
+            const accentBg = tone === "danger" ? "var(--err-bg)" : "var(--warn-bg)";
+            const accentText = tone === "danger" ? "var(--err-text)" : "var(--warn-text)";
+            const accentBorder = tone === "danger" ? "var(--err-border)" : "var(--warn-border)";
+            const paragraphs = String(message || "").split(/\n\n+/).filter(Boolean);
+
+            return e(ModalShell, {
+                icon: e("span", {
+                    style: {
+                        width: 30,
+                        height: 30,
+                        borderRadius: 9,
+                        background: accentBg,
+                        color: accentText,
+                        border: `1px solid ${accentBorder}`,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 16,
+                        flexShrink: 0
+                    }
+                }, icon || "⚠"),
+                title: title || "Confirmar acción",
+                onClose,
+                maxWidth: 430
+            },
+                e("div", {
+                    style: {
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                        marginBottom: 18
+                    }
+                },
+                    ...paragraphs.map((paragraph, idx) =>
                         e("div", {
+                            key: idx,
                             style: {
                                 fontSize: 12,
-                                color: "var(--text1)",
                                 lineHeight: 1.7,
-                                marginBottom: 16
+                                color: idx === 1 ? accentText : "var(--text1)",
+                                padding: idx === 1 ? "10px 12px" : 0,
+                                background: idx === 1 ? accentBg : "transparent",
+                                border: idx === 1 ? `1px solid ${accentBorder}` : "none",
+                                borderRadius: idx === 1 ? 7 : 0
                             }
-                        },
-                            "Elegí si querés dejar el planner vacío o volver a cargar los datos demo. Si la opción reemplaza el estado actual, la app te lo va a confirmar antes de aplicar el cambio."
-                        ),
-                        driveConnected && e("div", {
-                            style: {
-                                fontSize: 11, color: "var(--text2)", marginBottom: 14,
-                                padding: "8px 10px", background: "var(--bg2)", borderRadius: 5
-                            }
-                        },
-                            "⚠ Si estás usando Google Drive, el cambio también va a impactar el archivo sincronizado."
-                        ),
-                        e("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
-                            e("button", {
-                                onClick: onChooseEmpty,
-                                style: {
-                                    background: "var(--err-bg)", border: "1px solid var(--err-border)",
-                                    color: "var(--err-text)", padding: "12px 16px", borderRadius: 7, cursor: "pointer",
-                                    fontFamily: "inherit", fontSize: 13, textAlign: "left"
-                                }
-                            },
-                                e("div", { style: { fontWeight: 600, marginBottom: 3 } }, "🗑 Datos vacíos"),
-                                e("div", { style: { fontSize: 11 } }, "La app queda en blanco, sin ningún dato.")
-                            ),
-                            e("button", {
-                                onClick: onChooseSample,
-                                style: {
-                                    background: "var(--bg2)", border: "1px solid var(--border2)",
-                                    color: "var(--text0)", padding: "12px 16px", borderRadius: 7, cursor: "pointer",
-                                    fontFamily: "inherit", fontSize: 13, textAlign: "left"
-                                }
-                            },
-                                e("div", { style: { fontWeight: 600, marginBottom: 3 } }, "🎲 Cargar datos de ejemplo"),
-                                e("div", { style: { fontSize: 11, color: "var(--text2)" } }, "Útil para explorar la app.")
-                            )
-                        )
+                        }, paragraph)
                     )
+                ),
+                e("div", { style: { display: "flex", justifyContent: "flex-end", gap: 10 } },
+                    e("button", { className: "cancbtn", onClick: onClose }, cancelLabel || "Cancelar"),
+                    e("button", {
+                        className: "savebtn",
+                        style: tone === "danger"
+                            ? { background: "var(--err-bg)", borderColor: "var(--err-border)", color: "var(--err-text)" }
+                            : undefined,
+                        onClick: onConfirm
+                    }, confirmLabel || "Continuar")
+                )
+            );
+        }
+        function ResetModal({ driveConnected, onChooseEmpty, onChooseSample, onClose }) {
+            return e(ModalShell, {
+                icon: e("span", { style: { fontSize: 20 } }, "🗑"),
+                title: "Resetear datos",
+                onClose,
+                maxWidth: 420
+            },
+                e("div", {
+                    style: {
+                        fontSize: 12,
+                        color: "var(--text1)",
+                        lineHeight: 1.7,
+                        marginBottom: 16
+                    }
+                },
+                    "Elegí si querés dejar el planner vacío o volver a cargar los datos demo. Si la opción reemplaza el estado actual, la app te lo va a confirmar antes de aplicar el cambio."
+                ),
+                driveConnected ? e(ModalNotice, { tone: "neutral" },
+                    "⚠ Si estás usando Google Drive, el cambio también va a impactar el archivo sincronizado."
+                ) : null,
+                e("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
+                    e(ChoiceCard, {
+                        title: "Datos vacíos",
+                        description: "La app queda en blanco, sin ningún dato.",
+                        icon: "🗑",
+                        tone: "danger",
+                        onClick: onChooseEmpty
+                    }),
+                    e(ChoiceCard, {
+                        title: "Cargar datos de ejemplo",
+                        description: "Útil para explorar la app.",
+                        icon: "🎲",
+                        tone: "neutral",
+                        onClick: onChooseSample
+                    })
                 )
             );
         }
         /* ─── DRIVE CONFLICT MODAL ── */
         function DriveConflictModal({ conflict, onUseDrive, onUseLocal, onClose }) {
-            return e("div", { className: "ov", onClick: onClose },
-                e("div", { className: "mod", style: { maxWidth: 420 }, onClick: ev => ev.stopPropagation() },
-                    e("div", { className: "mhd" },
-                        e("span", { style: { fontSize: 20 } }, "☁"),
-                        e("span", { className: "mtit" }, "Datos encontrados en Google Drive"),
-                        e("button", { className: "mclose", onClick: onClose }, "✕")
-                    ),
-                    e("div", { className: "mbody" },
-                        e("p", { style: { fontSize: 13, color: "var(--text1)", lineHeight: 1.6, marginBottom: 18 } },
-                            "Hay datos guardados en Drive y también datos locales en este dispositivo. ¿Con cuáles querés trabajar?"
-                        ),
-                        e("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
-                            e("button", {
-                                onClick: onUseDrive,
-                                style: {
-                                    background: "var(--info-bg)", border: "1px solid var(--accent)", color: "var(--info-text)",
-                                    padding: "12px 16px", borderRadius: 7, cursor: "pointer", fontFamily: "inherit",
-                                    fontSize: 13, textAlign: "left", transition: "all .15s"
-                                }
-                            },
-                                e("div", { style: { fontWeight: 600, marginBottom: 3 } }, "☁ Usar datos de Google Drive"),
-                                e("div", { style: { fontSize: 11, color: "var(--text2)" } },
-                                    (conflict.driveData.tareas?.length || 0) + " tareas · " + (conflict.driveData.materias?.length || 0) + " materias")
-                            ),
-                            e("button", {
-                                onClick: onUseLocal,
-                                style: {
-                                    background: "var(--bg2)", border: "1px solid var(--border2)", color: "var(--text0)",
-                                    padding: "12px 16px", borderRadius: 7, cursor: "pointer", fontFamily: "inherit",
-                                    fontSize: 13, textAlign: "left", transition: "all .15s"
-                                }
-                            },
-                                e("div", { style: { fontWeight: 600, marginBottom: 3 } }, "💻 Conservar datos locales"),
-                                e("div", { style: { fontSize: 11, color: "var(--text2)" } },
-                                    (conflict.localData.tareas?.length || 0) + " tareas · " + (conflict.localData.materias?.length || 0) + " materias")
-                            )
-                        ),
-                        e("p", { style: { fontSize: 10, color: "var(--text3)", marginTop: 14, textAlign: "center", lineHeight: 1.6 } },
-                            "Si conservás los datos locales, esa versión va a pasar a ser la activa y podrá sobrescribir la de Drive en la próxima sincronización. Los datos que no elijas no se borran automáticamente."
-                        )
-                    )
+            return e(ModalShell, {
+                icon: e("span", { style: { fontSize: 20 } }, "☁"),
+                title: "Datos encontrados en Google Drive",
+                onClose,
+                maxWidth: 420
+            },
+                e("p", { style: { fontSize: 13, color: "var(--text1)", lineHeight: 1.6, marginBottom: 18 } },
+                    "Hay datos guardados en Drive y también datos locales en este dispositivo. ¿Con cuáles querés trabajar?"
+                ),
+                e("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
+                    e(ChoiceCard, {
+                        title: "Usar datos de Google Drive",
+                        description: (conflict.driveData.tareas?.length || 0) + " tareas · " + (conflict.driveData.materias?.length || 0) + " materias",
+                        icon: "☁",
+                        tone: "info",
+                        onClick: onUseDrive
+                    }),
+                    e(ChoiceCard, {
+                        title: "Conservar datos locales",
+                        description: (conflict.localData.tareas?.length || 0) + " tareas · " + (conflict.localData.materias?.length || 0) + " materias",
+                        icon: "💻",
+                        tone: "neutral",
+                        onClick: onUseLocal
+                    })
+                ),
+                e("p", { style: { fontSize: 10, color: "var(--text3)", marginTop: 14, textAlign: "center", lineHeight: 1.6 } },
+                    "Si conservás los datos locales, esa versión va a pasar a ser la activa y podrá sobrescribir la de Drive en la próxima sincronización. Los datos que no elijas no se borran automáticamente."
                 )
             );
         }
         /* ─── HELP GUIDE ── */
-        const GUIDE_SECTIONS = [
+                /* PHASE 0 MAPA: contenido editorial de ayuda y secciones navegables */
+        /* Mantener separado mentalmente del flujo de onboarding aunque hoy convivan en UI. */
+
+const GUIDE_SECTIONS = [
             {
                 id: "inicio", label: "Primeros pasos", icon: "🚀",
                 lead: "La mejor forma de sacarle jugo a UAI Planner es pensarla como una cadena simple: primero definís tu mapa semanal, después cargás lo que tenés que hacer y finalmente registrás lo que realmente estudiás. La app hace el resto: ordenar, priorizar y mostrarte dónde estás parado.",
@@ -8877,23 +9179,281 @@ e("div", { className: "calgrid" },
            13. APP — COMPONENTE RAÍZ
            ══════════════════════════════════════════════════════════════════════ */
         /* ─── APP ── */
-        function App() {
+                /* PHASE 0 MAPA: componente raíz */
+        /* Aquí conviven hoy estado global, persistencia, flujos guiados, layout sticky, vistas, modales e integración Drive. */
+        /* Principal candidato a refactor progresivo en fases futuras. */
+
+
+        /* PHASE 5 — helpers para efectos y layout */
+        function computeChromeOffsetValue({ chromeExpanded, panelBottom, peekBottom }) {
+            const occupiedHeight = chromeExpanded ? panelBottom : peekBottom;
+            const safeGap = chromeExpanded ? 14 : 12;
+            return Math.max(occupiedHeight, 0) + safeGap;
+        }
+
+        function updateAppChromeOffset(appEl, { chromeExpanded, panelEl, peekEl }) {
+            if (!appEl) return;
+            const panelBottom = panelEl ? Math.ceil(panelEl.getBoundingClientRect().bottom) : 0;
+            const peekBottom = peekEl ? Math.ceil(peekEl.getBoundingClientRect().bottom) : 0;
+            const offset = computeChromeOffsetValue({ chromeExpanded, panelBottom, peekBottom });
+            appEl.style.setProperty("--chrome-offset", `${offset}px`);
+        }
+
+        function getDefaultFranjasForMode(franjaMode) {
+            return franjaMode === 6 ? DEFAULT_FRANJAS_6 : DEFAULT_FRANJAS_3;
+        }
+
+        function shouldPersistPlannerLocally({ appMode, isDemo }) {
+            return appMode !== "welcome" && !isDemo;
+        }
+
+        function resolveDriveReconnectFallback() {
+            return {
+                driveConnected: false,
+                appMode: "local",
+                syncMsg: "Tu sesión de Google expiró. Seguís en modo local con tus datos actuales."
+            };
+        }
+
+        function computeDirtyFlag(data, lastExportHash) {
+            return hashData(data) !== lastExportHash;
+        }
+
+
+        /* PHASE 6 — componentes internos extraídos sin separar archivos */
+        function WelcomeGate({
+            enterLocal,
+            enterDemo,
+            setShowHelp,
+            syncMsg,
+            onboardingReturnToApp,
+            exitOnboardingToApp,
+            customConfirm,
+            setCustomConfirm
+        }) {
+            return e(React.Fragment, null,
+                e(WelcomeScreen, {
+                    onLocal: enterLocal,
+                    onDemo: enterDemo,
+                    onShowHelp: () => setShowHelp(true),
+                    expiredMsg: syncMsg && syncMsg.includes("expiró") ? syncMsg : null,
+                    hasExistingData: onboardingReturnToApp,
+                    onExit: exitOnboardingToApp
+                }),
+                customConfirm && e(ConfirmModal, {
+                    title: customConfirm.title,
+                    message: customConfirm.message,
+                    confirmLabel: customConfirm.confirmLabel,
+                    cancelLabel: customConfirm.cancelLabel,
+                    tone: customConfirm.tone,
+                    icon: customConfirm.icon,
+                    onClose: () => setCustomConfirm(null),
+                    onConfirm: () => {
+                        const fn = customConfirm.onConfirm;
+                        setCustomConfirm(null);
+                        if (typeof fn === "function") fn();
+                    }
+                })
+            );
+        }
+
+        function PlannerFiltersBar({
+            view,
+            fm,
+            setFm,
+            ft,
+            setFt,
+            tipos,
+            fa,
+            setFa,
+            filtered,
+            materiasFiltradas,
+            setForm,
+            setImportTasksOpen
+        }) {
+            if (["hoy", "semana", "materias"].includes(view)) return null;
+
+            return e("div", { className: "fbar" },
+                e("select", { value: fm, onChange: ev => setFm(ev.target.value) },
+                    e("option", { value: "all" }, "Todas las materias"),
+                    materiasFiltradas.map(m => e("option", { key: m.id, value: m.id }, m.nombre + (periodoTag(m) ? " — " + periodoTag(m) : "")))
+                ),
+                e("select", { value: ft, onChange: ev => setFt(ev.target.value) },
+                    e("option", { value: "all" }, "Todos los tipos"),
+                    tipos.map(t => e("option", { key: t.id, value: t.id }, t.icon + " " + t.label))
+                ),
+                e("label", { className: "chklabel", style: { display: "inline-flex", alignItems: "center", gap: 8, padding: "0 10px", height: 36, border: "1px solid var(--line)", borderRadius: 10, background: "var(--card)" } },
+                    e("input", { type: "checkbox", checked: fa === "only", onChange: ev => setFa(ev.target.checked ? "only" : "all") }),
+                    e("span", null, "Solo alertas")
+                ),
+                e("span", { className: "cnt responsive-cnt" }, filtered.length + " tareas"),
+                e("div", { style: { display: "flex", gap: 8, marginLeft: "auto" } },
+                    e("button", { className: "newbtn", onClick: () => setForm({}) },
+                        e("span", { className: "btn-full" }, "+ Nueva tarea"),
+                        e("span", { className: "btn-short" }, "+")
+                    ),
+                    e("button", { className: "importbtn", onClick: () => setImportTasksOpen(true) },
+                        e("span", { className: "btn-full" }, "↑ Importar tareas"),
+                        e("span", { className: "btn-short" }, "↑")
+                    )
+                )
+            );
+        }
+
+        function PlannerChromeShell({
+            appRef,
+            chromeShellRef,
+            chromeExpanded,
+            chromePinned,
+            setChromePinned,
+            showChromeTemporarily,
+            scheduleChromeHide,
+            aniosDisponibles,
+            fAnio,
+            fPeriodos,
+            setFAnio,
+            togglePeriodo,
+            view,
+            setView,
+            urgentTasks,
+            setShowHelp,
+            setSettings,
+            data,
+            dirty,
+            onExported,
+            imp,
+            driveConnected,
+            syncStatus,
+            autoSave,
+            showSync,
+            setShowSync,
+            handleDriveConnect,
+            handleDriveDisconnect,
+            handleDriveSaveNow,
+            handleDriveLoad,
+            toggleAutoSave,
+            setResetModal,
+            userEmail,
+            impErr,
+            fm,
+            setFm,
+            ft,
+            setFt,
+            tipos,
+            fa,
+            setFa,
+            filtered,
+            materiasFiltradas,
+            setForm,
+            setImportTasksOpen,
+            children
+        }) {
+            return e("div", { ref: appRef, className: "app " + (chromeExpanded ? "chrome-open" : "chrome-hidden") },
+                e("div", {
+                    ref: chromeShellRef,
+                    className: "chrome-shell" + (chromeExpanded ? " open" : " collapsed"),
+                    onMouseEnter: showChromeTemporarily,
+                    onMouseLeave: scheduleChromeHide,
+                    onFocus: showChromeTemporarily,
+                    onBlur: (ev) => {
+                        if (!ev.currentTarget.contains(ev.relatedTarget)) scheduleChromeHide();
+                    }
+                },
+                    e("div", { className: "chrome-panel" },
+                        e("header", { className: "hdr" },
+                            e("button", {
+                                className: "chrome-pin-btn" + (chromePinned ? " pin" : ""),
+                                onClick: () => setChromePinned(v => !v),
+                                title: chromePinned ? "Desfijar la barra" : "Fijar la barra"
+                            }, chromePinned ? "📌" : "☰"),
+                            e("span", { className: "logo" }, "◈ UAI Planner"),
+                            e(PeriodoSelector, { anios: aniosDisponibles, fAnio, fPeriodos, setFAnio, togglePeriodo }),
+                            e("nav", { className: "nav", style: { marginLeft: 24 } },
+                                e("div", { style: { display: "flex", gap: 0, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 7, padding: 3 } },
+                                    [
+                                        { v: "hoy", icon: "◈", label: "Hoy", short: "H" },
+                                        { v: "semana", icon: "◈", label: "Semana", short: "S" },
+                                        { v: "materias", icon: "◉", label: "Materias", short: "M" }
+                                    ].map(({ v, icon, label, short }) =>
+                                        e("button", { key: v, className: "nb " + (view === v ? "nba" : ""), onClick: () => setView(v), title: label },
+                                            e("span", { className: "nb-ico", "aria-hidden": "true" }, icon),
+                                            e("span", { className: "nb-label" }, label),
+                                            e("span", { className: "nb-short" }, short)
+                                        )
+                                    )
+                                ),
+                                e("div", { style: { width: 16 } }),
+                                e("div", { style: { display: "flex", gap: 0, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 7, padding: 3 } },
+                                    [
+                                        { v: "backlog", icon: "≡", label: "Backlog", short: "B" },
+                                        { v: "kanban", icon: "⬡", label: "Kanban", short: "K" },
+                                        { v: "calendar", icon: "◷", label: "Calendario", short: "C" }
+                                    ].map(({ v, icon, label, short }) =>
+                                        e("button", { key: v, className: "nb " + (view === v ? "nba" : ""), onClick: () => setView(v), title: label },
+                                            e("span", { className: "nb-ico", "aria-hidden": "true" }, icon),
+                                            e("span", { className: "nb-label" }, label),
+                                            e("span", { className: "nb-short" }, short)
+                                        )
+                                    ),
+                                    e("div", { className: "nav-alert-wrap" },
+                                        e("div", {
+                                            className: "nav-alert-pill" + (urgentTasks.length === 0 ? " nav-alert-zero" : ""),
+                                            title: urgentTasks.length === 0 ? "Sin alertas activas" : `${urgentTasks.length} alertas activas`
+                                        },
+                                            e("span", { className: "nav-alert-dot", "aria-hidden": "true" }),
+                                            e("span", null, urgentTasks.length)
+                                        )
+                                    )
+                                )
+                            ),
+                            e("div", { className: "hdr-btns" },
+                                e("button", {
+                                    className: "iconbtn",
+                                    onClick: () => setShowHelp(true),
+                                    title: "Guía de uso"
+                                }, "?"),
+                                e(ConfigBtn, { onOpenSettings: (tab) => setSettings(tab || "materias") }),
+                                e(DatosBtn, {
+                                    data, dirty, onExported, imp,
+                                    driveConnected, syncStatus, autoSave, showSync,
+                                    setShowSync, handleDriveConnect, handleDriveDisconnect,
+                                    handleDriveSaveNow, handleDriveLoad, toggleAutoSave,
+                                    onReset: () => setResetModal(true), userEmail
+                                })
+                            )
+                        ),
+                        impErr && e("div", { className: "errbanner" }, "⚠ " + impErr),
+                        e(PlannerFiltersBar, {
+                            view,
+                            fm,
+                            setFm,
+                            ft,
+                            setFt,
+                            tipos,
+                            fa,
+                            setFa,
+                            filtered,
+                            materiasFiltradas,
+                            setForm,
+                            setImportTasksOpen
+                        })
+                    )
+                ),
+                e("div", { className: "main" }, children)
+            );
+        }
+
+function App() {
             const saved = localStorage.getItem("uai-theme") || "noche";
-            const [themeId, setThemeId] = useState(saved);
+                        /* PHASE 0 ESTADO — apariencia / modo de app / fuente de datos */
+const [themeId, setThemeId] = useState(saved);
             // App mode: "welcome" | "local" | "drive"
-            const [appMode, setAppMode] = useState(() => {
-                return localStorage.getItem(LS_MODE_KEY) || "welcome";
-            });
-            const [userEmail, setUserEmail] = useState(() => localStorage.getItem(LS_EMAIL_KEY) || null);
-            const [data, setData] = useState(() => {
-                const mode = localStorage.getItem(LS_MODE_KEY);
-                const email = localStorage.getItem(LS_EMAIL_KEY);
-                if (mode === "local") { const d = loadFromLS(null); return d || EMPTY_DATA; }
-                if (mode === "drive" && email) { const d = loadFromLS(email); return d || EMPTY_DATA; }
-                return EMPTY_DATA; // welcome screen
-            });
+            const [appMode, setAppMode] = useState(() => PlannerStorage.getMode());
+            const [userEmail, setUserEmail] = useState(() => PlannerStorage.getEmail());
+            const [data, setData] = useState(() => PlannerStorage.loadBootData());
             const [isDemo, setIsDemo] = useState(false);
-            const [view, setView] = useState(() => localStorage.getItem("uai-last-view") || "hoy");
+                        /* PHASE 0 ESTADO — navegación principal, filtros y calendario */
+const [view, setView] = useState(() => localStorage.getItem("uai-last-view") || "hoy");
             const [fm, setFm] = useState("all");
             const [ft, setFt] = useState("all");
             const [fa, setFa] = useState("all");
@@ -8903,7 +9463,8 @@ e("div", { className: "calgrid" },
             // store only the task ID so sel auto-updates when data changes
             const [selId, setSelId] = useState(null);
             const [form, setForm] = useState(null);
-            const [importTasksOpen, setImportTasksOpen] = useState(false);
+                        /* PHASE 0 ESTADO — modales principales, importación, configuración, conflictos y ayuda */
+const [importTasksOpen, setImportTasksOpen] = useState(false);
             const [settings, setSettings] = useState(false);
             const [fAnio, setFAnio] = useState(() => {
                 const saved = localStorage.getItem("uai-filtro-anio");
@@ -8942,33 +9503,35 @@ e("div", { className: "calgrid" },
                 const panelEl = shellEl.querySelector(".chrome-panel");
                 const peekEl = shellEl.querySelector(".chrome-peek");
 
-                const updateChromeOffset = () => {
-                    const panelBottom = panelEl ? Math.ceil(panelEl.getBoundingClientRect().bottom) : 0;
-                    const peekBottom = peekEl ? Math.ceil(peekEl.getBoundingClientRect().bottom) : 0;
-                    const occupiedHeight = chromeExpanded ? panelBottom : peekBottom;
-                    const safeGap = chromeExpanded ? 14 : 12;
-                    appEl.style.setProperty("--chrome-offset", `${Math.max(occupiedHeight, 0) + safeGap}px`);
-                };
+                const syncChromeOffset = () => updateAppChromeOffset(appEl, {
+                    chromeExpanded,
+                    panelEl,
+                    peekEl
+                });
 
-                let raf1 = requestAnimationFrame(updateChromeOffset);
-                let raf2 = requestAnimationFrame(() => requestAnimationFrame(updateChromeOffset));
-                updateChromeOffset();
+                let raf1 = requestAnimationFrame(syncChromeOffset);
+                let raf2 = requestAnimationFrame(() => requestAnimationFrame(syncChromeOffset));
+                syncChromeOffset();
 
-                const ro = new ResizeObserver(updateChromeOffset);
+                const ro = new ResizeObserver(syncChromeOffset);
                 ro.observe(shellEl);
                 if (panelEl) ro.observe(panelEl);
                 if (peekEl) ro.observe(peekEl);
 
-                const mo = new MutationObserver(updateChromeOffset);
+                const mo = new MutationObserver(syncChromeOffset);
                 if (panelEl) {
                     mo.observe(panelEl, { childList: true, subtree: true, attributes: true });
                 }
 
-                const onViewportChange = () => updateChromeOffset();
+                const onViewportChange = () => syncChromeOffset();
                 window.addEventListener("resize", onViewportChange);
                 window.addEventListener("orientationchange", onViewportChange);
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener("resize", onViewportChange);
+                    window.visualViewport.addEventListener("scroll", onViewportChange);
+                }
                 if (document.fonts && document.fonts.ready) {
-                    document.fonts.ready.then(updateChromeOffset).catch(() => {});
+                    document.fonts.ready.then(syncChromeOffset).catch(() => {});
                 }
 
                 return () => {
@@ -8978,6 +9541,10 @@ e("div", { className: "calgrid" },
                     mo.disconnect();
                     window.removeEventListener("resize", onViewportChange);
                     window.removeEventListener("orientationchange", onViewportChange);
+                    if (window.visualViewport) {
+                        window.visualViewport.removeEventListener("resize", onViewportChange);
+                        window.visualViewport.removeEventListener("scroll", onViewportChange);
+                    }
                 };
             }, [chromeExpanded, view, fm, ft, fa, data.tareas.length]);
 
@@ -9028,10 +9595,11 @@ e("div", { className: "calgrid" },
                 // Si el usuario ya estaba dentro de la app, el onboarding debe comportarse
                 // como una reentrada guiada aunque el planner esté vacío o en demo.
                 setOnboardingReturnToApp(true);
-                localStorage.setItem(LS_MODE_KEY, "welcome");
+                PlannerStorage.setMode("welcome");
                 setAppMode("welcome");
             }
-            const autoSaveTimer = useRef(null);
+                        /* PHASE 0 ESTADO — temporizadores y refs operativas */
+const autoSaveTimer = useRef(null);
             // Pomodoro state
             const [pomoSession, setPomoSession] = useState(null);
             const [pomoContext, setPomoContext] = useState(null);
@@ -9041,36 +9609,43 @@ e("div", { className: "calgrid" },
             const lastExp = useRef(hashData(EMPTY_DATA));
             const [dirty, setDirty] = useState(false);
 
-            useEffect(() => { applyTheme(themeId); }, [themeId]);
+                        /* PHASE 0 EFECTOS — persistencia, bootstrap, autosave, layout y sincronización */
+useEffect(() => { applyTheme(themeId); }, [themeId]);
             useEffect(() => {
                 window.__openSettings = (tab) => setSettings(tab || "materias");
                 return () => { delete window.__openSettings; };
             }, []);
             useEffect(() => { localStorage.setItem("uai-last-view", view); }, [view]);
 
-            useEffect(() => { setDirty(hashData(data) !== lastExp.current); }, [data]);
+            useEffect(() => { setDirty(computeDirtyFlag(data, lastExp.current)); }, [data]);
             useEffect(() => {
                 if (!localStorage.getItem("uai-franjas")) {
-                    setFranjas(franjaMode === 6 ? DEFAULT_FRANJAS_6 : DEFAULT_FRANJAS_3);
+                    setFranjas(getDefaultFranjasForMode(franjaMode));
                 }
             }, [franjaMode]);
             useEffect(() => {
-                if (appMode !== "welcome" && !isDemo) saveToLS(data, userEmail);
+                if (!shouldPersistPlannerLocally({ appMode, isDemo })) return;
+                PlannerStorage.saveLocal(data, userEmail);
             }, [data, appMode, userEmail, isDemo]);
 
             // Silently reconnect Drive if was previously connected
             useEffect(() => {
-                if (appMode === "drive" && userEmail && driveReady()) {
-                    driveConnectSilent((token, err) => {
-                        if (token) { setDriveConnected(true); setSyncStatus("idle"); }
-                        else {
-                            setDriveConnected(false);
-                            localStorage.setItem(LS_MODE_KEY, "local");
-                            setAppMode("local");
-                            setSyncMsg("Tu sesión de Google expiró. Seguís en modo local con tus datos actuales.");
-                        }
-                    });
-                }
+                const canReconnectDrive = appMode === "drive" && userEmail && PlannerDriveSync.ready();
+                if (!canReconnectDrive) return;
+
+                PlannerDriveSync.connectSilent((token) => {
+                    if (token) {
+                        setDriveConnected(true);
+                        setSyncStatus("idle");
+                        return;
+                    }
+
+                    const fallback = resolveDriveReconnectFallback();
+                    setDriveConnected(fallback.driveConnected);
+                    PlannerStorage.setMode(fallback.appMode);
+                    setAppMode(fallback.appMode);
+                    setSyncMsg(fallback.syncMsg);
+                });
             }, []);
 
             // Autosave debounce — fires 4s after last change, always on when Drive connected
@@ -9079,8 +9654,8 @@ e("div", { className: "calgrid" },
                 clearTimeout(autoSaveTimer.current);
                 autoSaveTimer.current = setTimeout(() => {
                     setSyncStatus("saving");
-                    driveSave(data)
-                        .then(() => { driveMarkSaved(); setSyncStatus("saved"); setDirty(false); lastExp.current = hashData(data); })
+                    PlannerDriveSync.save(data)
+                        .then(() => { PlannerDriveSync.markSaved(); setSyncStatus("saved"); setDirty(false); lastExp.current = hashData(data); })
                         .catch(err => { setSyncStatus("error"); setSyncMsg(err.message); });
                 }, 4000);
                 return () => clearTimeout(autoSaveTimer.current);
@@ -9128,7 +9703,7 @@ e("div", { className: "calgrid" },
             }
             function del(id) { setData(d => ({ ...d, tareas: d.tareas.filter(t => t.id !== id) })); setSelId(null); }
             function handleDriveConnect(fromWelcome = false) {
-                driveConnect((token, err) => {
+                PlannerDriveSync.connect((token, err) => {
                     if (err) { setSyncMsg("Error al conectar: " + err); return; }
                     setDriveConnected(true); setSyncStatus("idle");
                     toggleAutoSave(true);
@@ -9140,14 +9715,14 @@ e("div", { className: "calgrid" },
                             const email = info.email || "unknown";
                             setUserEmail(email);
                             localStorage.setItem(LS_EMAIL_KEY, email);
-                            localStorage.setItem(LS_MODE_KEY, "drive");
+                            PlannerStorage.setMode("drive");
                             setAppMode("drive");
                             // Try to load existing Drive data
-                            driveLoad().then(driveData => {
+                            PlannerDriveSync.load().then(driveData => {
                                 if (!driveData) {
                                     // No Drive file → upload current local data
                                     if (!isEmptyData(data) && !isSampleData(data)) {
-                                        driveSave(data).then(() => { driveMarkSaved(); setSyncStatus("saved"); });
+                                        PlannerDriveSync.save(data).then(() => { PlannerDriveSync.markSaved(); setSyncStatus("saved"); });
                                     }
                                     return;
                                 }
@@ -9155,17 +9730,24 @@ e("div", { className: "calgrid" },
                                     setSyncMsg("El archivo en Drive es de una versión anterior y no es compatible.");
                                     return;
                                 }
-                                const { version: _v, ...cleanDrive } = driveData;
-                                cleanDrive.tareas = (cleanDrive.tareas || []).map(t => ({ items: [], obligatorio: true, ...t }));
-                                cleanDrive.sesiones = cleanDrive.sesiones || [];
+                                const { version: _v, ...rawDriveData } = driveData;
+                                const cleanDrive = PlannerImportExport.normalizePlannerData(rawDriveData);
                                 const localKind = getPlannerDataKind(data);
                                 const driveKind = getPlannerDataKind(cleanDrive);
                                 if (localKind === "empty" && driveKind !== "none") {
                                     // Local vacío → usar Drive directamente
-                                    setData(cleanDrive); lastExp.current = hashData(cleanDrive); setDirty(false);
+                                    commitPlannerState({
+                                        nextData: cleanDrive,
+                                        nextDataMode: driveKind,
+                                        clearImportError: true
+                                    });
                                 } else if (localKind === driveKind && hashData(data) === hashData(cleanDrive)) {
                                     // Ya son iguales
-                                    setData(cleanDrive); lastExp.current = hashData(cleanDrive); setDirty(false);
+                                    commitPlannerState({
+                                        nextData: cleanDrive,
+                                        nextDataMode: driveKind,
+                                        clearImportError: true
+                                    });
                                 } else {
                                     // Hay diferencia entre lo local y lo remoto → decidir explícitamente
                                     setDriveConflict({ driveData: cleanDrive, localData: data });
@@ -9173,7 +9755,7 @@ e("div", { className: "calgrid" },
                             }).catch(() => { });
                         }).catch(() => {
                             setUserEmail(null);
-                            localStorage.setItem(LS_MODE_KEY, "drive");
+                            PlannerStorage.setMode("drive");
                             setAppMode("drive");
                         });
                 });
@@ -9181,21 +9763,23 @@ e("div", { className: "calgrid" },
             const [resetModal, setResetModal] = useState(false);
             const [customConfirm, setCustomConfirm] = useState(null);
 
-            function handleDriveDisconnect() {
+                        /* PHASE 0 FLUJO CRÍTICO — desconexión de Drive preservando continuidad local */
+function handleDriveDisconnect() {
                 // Disconnect without losing the current planner: keep current data locally and continue in local mode.
                 const currentData = data;
-                driveDisconnect();
-                setDriveConnected(false); setSyncStatus("idle");
-                if (!isDemo) {
-                    saveToLS(currentData, null);
-                }
-                setUserEmail(null);
-                localStorage.removeItem(LS_EMAIL_KEY);
-                localStorage.setItem(LS_MODE_KEY, "local");
-                setAppMode("local");
-                setDirty(false);
-                lastExp.current = hashData(currentData);
-                setSyncMsg("Google Drive se desconectó. Seguís en modo local con tus datos actuales.");
+                PlannerDriveSync.disconnect();
+                setDriveConnected(false);
+
+                commitPlannerState({
+                    nextData: currentData,
+                    nextDataMode: isDemo ? DATA_MODE_DEMO : getCurrentPlannerDataMode(currentData),
+                    persist: !isDemo,
+                    persistEmail: null,
+                    nextAppMode: STORAGE_MODE_LOCAL,
+                    clearUserEmail: true,
+                    nextSyncStatus: "idle",
+                    nextSyncMessage: "Google Drive se desconectó. Seguís en modo local con tus datos actuales."
+                });
             }
 
             function doResetEmpty() {
@@ -9207,21 +9791,25 @@ e("div", { className: "calgrid" },
             }
             function handleDriveSaveNow() {
                 setSyncStatus("saving");
-                driveSave(data)
-                    .then(() => { driveMarkSaved(); setSyncStatus("saved"); setDirty(false); lastExp.current = hashData(data); })
+                PlannerDriveSync.save(data)
+                    .then(() => { PlannerDriveSync.markSaved(); setSyncStatus("saved"); setDirty(false); lastExp.current = hashData(data); })
                     .catch(err => { setSyncStatus("error"); setSyncMsg(err.message); });
             }
             async function handleDriveLoad() {
                 try {
                     setSyncStatus("saving");
-                    const p = await driveLoad();
-                    if (!p.materias || !p.tareas) throw new Error("Formato inválido");
-                    if (!p.tipos) p.tipos = DEFAULT_TIPOS;
-                    if (!p.sesiones) p.sesiones = [];
-                    p.tareas = p.tareas.map(t => ({ items: [], obligatorio: true, ...t }));
-                    setData(p); lastExp.current = hashData(p); setDirty(false);
-                    setImpErr(null); setSyncStatus("saved");
-                } catch (err) { setImpErr(err.message); setSyncStatus("error"); setSyncMsg(err.message); }
+                    const loadedPlannerData = PlannerImportExport.normalizePlannerData(await PlannerDriveSync.load());
+                    commitPlannerState({
+                        nextData: loadedPlannerData,
+                        nextDataMode: getCurrentPlannerDataMode(loadedPlannerData),
+                        clearImportError: true,
+                        nextSyncStatus: "saved"
+                    });
+                } catch (err) {
+                    setImpErr(err.message);
+                    setSyncStatus("error");
+                    setSyncMsg(err.message);
+                }
             }
             function toggleAutoSave(v) {
                 setAutoSave(v); localStorage.setItem("uai-autosave", v ? "true" : "false");
@@ -9243,12 +9831,13 @@ e("div", { className: "calgrid" },
             function deleteSession(sessionId) {
                 setData(d => ({ ...d, sesiones: (d.sesiones || []).filter(s => s.id !== sessionId) }));
             }
+            /* PHASE 2 — helpers de negocio usados por onboarding y reset sin mezclar UI */
             function hasExistingRealDataForOnboarding() {
                 return hasAnyRealPlannerData(
                     data,
-                    loadFromLS(userEmail),
-                    loadFromLS(null),
-                    appMode === "drive" ? loadFromLS(userEmail) : null
+                    PlannerStorage.loadLocal(userEmail),
+                    PlannerStorage.loadLocal(null),
+                    appMode === "drive" ? PlannerStorage.loadLocal(userEmail) : null
                 );
             }
 
@@ -9316,29 +9905,93 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
                 return { title, icon, tone, confirmLabel, message };
             }
 
-            function openPlannerAfterOnboarding(nextData, { demo = false } = {}) {
-                localStorage.setItem(LS_MODE_KEY, "local");
-                setAppMode("local");
+                        /* PHASE 8 — commit central del estado del planner */
+            function commitPlannerState({
+                nextData,
+                nextDataMode = getCurrentPlannerDataMode(nextData),
+                persist = false,
+                persistEmail = null,
+                nextAppMode = null,
+                nextUserEmail,
+                clearUserEmail = false,
+                nextSyncStatus = null,
+                nextSyncMessage = null,
+                clearImportError = false,
+                closeResetModal = false,
+                showHelp = false,
+                hideHelp = false,
+                exitOnboarding = false,
+                markClean = true
+            }) {
+                if (nextAppMode !== null) {
+                    PlannerStorage.setMode(nextAppMode);
+                    setAppMode(nextAppMode);
+                }
+
+                if (clearUserEmail) {
+                    PlannerStorage.clearEmail();
+                    setUserEmail(null);
+                } else if (nextUserEmail !== undefined) {
+                    if (nextUserEmail) PlannerStorage.setEmail(nextUserEmail);
+                    setUserEmail(nextUserEmail || null);
+                }
+
                 setData(nextData);
-                setIsDemo(!!demo);
-                setShowHelp(true);
-                setOnboardingReturnToApp(false);
-                lastExp.current = hashData(nextData);
-                setDirty(false);
-                saveToLS(nextData, null);
+                setIsDemo(nextDataMode === DATA_MODE_DEMO);
+
+                if (showHelp) setShowHelp(true);
+                if (hideHelp) setShowHelp(false);
+                if (exitOnboarding) setOnboardingReturnToApp(false);
+
+                if (markClean) {
+                    lastExp.current = hashData(nextData);
+                    setDirty(false);
+                }
+
+                if (persist) {
+                    PlannerStorage.saveLocal(nextData, persistEmail);
+                }
+
+                if (clearImportError) {
+                    setImpErr(null);
+                }
+
+                if (closeResetModal) {
+                    setResetModal(false);
+                }
+
+                if (nextSyncStatus !== null) {
+                    setSyncStatus(nextSyncStatus);
+                }
+
+                if (nextSyncMessage !== null) {
+                    setSyncMsg(nextSyncMessage);
+                }
+            }
+
+function openPlannerAfterOnboarding(nextData, { demo = false } = {}) {
+                commitPlannerState({
+                    nextData,
+                    nextDataMode: demo ? DATA_MODE_DEMO : DATA_MODE_EMPTY,
+                    persist: true,
+                    persistEmail: null,
+                    nextAppMode: STORAGE_MODE_LOCAL,
+                    showHelp: true,
+                    exitOnboarding: true
+                });
             }
 
             async function applyPlannerDataChoice(targetKind, { context = "reset" } = {}) {
-                const nextData = targetKind === "demo" ? SAMPLE : EMPTY_DATA;
-                const isDemoTarget = targetKind === "demo";
+                const nextData = getTargetPlannerData(targetKind);
+                const isDemoTarget = targetKind === DATA_MODE_DEMO;
 
                 if (context === "onboarding") {
                     openPlannerAfterOnboarding(nextData, { demo: isDemoTarget });
                     return;
                 }
 
-                clearLS(userEmail);
-                clearLS(null);
+                PlannerStorage.clearLocal(userEmail);
+                PlannerStorage.clearLocal(null);
 
                 if (driveConnected && driveState.fileId) {
                     try {
@@ -9351,45 +10004,75 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
                     } catch (e) { }
                 }
 
-                setData(nextData);
-                setIsDemo(isDemoTarget);
-                lastExp.current = hashData(nextData);
-                setDirty(false);
-                setResetModal(false);
-                if (driveConnected) setSyncStatus("idle");
-                setSyncMsg(isDemoTarget ? "Se cargaron los datos de ejemplo." : "El planner quedó vacío.");
+                const persistEmail = appMode === STORAGE_MODE_DRIVE ? userEmail : null;
+                commitPlannerState({
+                    nextData,
+                    nextDataMode: isDemoTarget ? DATA_MODE_DEMO : DATA_MODE_EMPTY,
+                    persist: isDemoTarget,
+                    persistEmail,
+                    closeResetModal: true,
+                    nextSyncStatus: driveConnected ? "idle" : null,
+                    nextSyncMessage: isDemoTarget ? "Se cargaron los datos de ejemplo." : "El planner quedó vacío."
+                });
             }
 
-            function requestPlannerDataChange(targetKind, { context = "reset" } = {}) {
-                const currentKind = getPlannerDataKind(data);
-                const sameKind = currentKind === targetKind;
-                const revisitingOnboarding = context === "onboarding" && onboardingReturnToApp;
-                const needsConfirm = context === "reset" || revisitingOnboarding;
-                const shouldReapplySameKind = sameKind && (targetKind === "demo" || (targetKind === "empty" && hashData(data) !== hashData(EMPTY_DATA)));
+                        /* PHASE 0 FLUJO CRÍTICO — transición de datasets (vacío / demo / actual) */
+            /* Debe mantenerse consistente entre onboarding, reset de datos y futuros flujos de importación. */
 
-                if (context === "reset") {
+/* PHASE 3 — transiciones sensibles centralizadas */
+            function buildPlannerDataTransitionPlan(targetKind, { context = "reset" } = {}) {
+                const basePlan = resolvePlannerDataChangePlan({
+                    currentData: data,
+                    targetKind,
+                    context,
+                    onboardingReturnToApp
+                });
+
+                const confirmConfig = basePlan.needsConfirm
+                    ? buildPlannerDataChangeConfirmConfig(basePlan, { driveConnected })
+                    : null;
+
+                return {
+                    ...basePlan,
+                    context,
+                    confirmConfig
+                };
+            }
+
+            function applyPlannerDataTransition(plan) {
+                applyPlannerDataChoice(plan.targetKind, { context: plan.context });
+            }
+
+            function executePlannerDataTransition(plan) {
+                if (plan.context === "reset") {
                     setResetModal(false);
                 }
 
-                if (sameKind && !shouldReapplySameKind) {
-                    if (context === "onboarding") {
-                        applyPlannerDataChoice(targetKind, { context });
+                if (plan.shouldSkip) {
+                    if (plan.context === "onboarding") {
+                        applyPlannerDataTransition(plan);
                     }
                     return;
                 }
 
-                if (!needsConfirm) {
-                    applyPlannerDataChoice(targetKind, { context });
+                if (plan.shouldApplyDirectly) {
+                    applyPlannerDataTransition(plan);
                     return;
                 }
 
                 setCustomConfirm({
-                    ...buildDataChangeConfirm(targetKind, currentKind, { context: revisitingOnboarding ? "revisit" : context }),
-                    onConfirm: () => applyPlannerDataChoice(targetKind, { context })
+                    ...plan.confirmConfig,
+                    onConfirm: () => applyPlannerDataTransition(plan)
                 });
             }
 
-            function enterLocal() {
+            function requestPlannerDataChange(targetKind, { context = "reset" } = {}) {
+                const plan = buildPlannerDataTransitionPlan(targetKind, { context });
+                executePlannerDataTransition(plan);
+            }
+
+                        /* PHASE 0 FLUJO CRÍTICO — entrada al planner desde onboarding */
+function enterLocal() {
                 requestPlannerDataChange("empty", { context: "onboarding" });
             }
 
@@ -9397,8 +10080,9 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
                 requestPlannerDataChange("demo", { context: "onboarding" });
             }
 
-            function exitOnboardingToApp() {
-                localStorage.setItem(LS_MODE_KEY, driveConnected ? "drive" : "local");
+                        /* PHASE 0 FLUJO CRÍTICO — salida segura del onboarding sin alterar datos */
+function exitOnboardingToApp() {
+                PlannerStorage.setMode(driveConnected ? "drive" : "local");
                 setAppMode(driveConnected ? "drive" : "local");
                 setShowHelp(false);
                 setOnboardingReturnToApp(false);
@@ -9449,24 +10133,18 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
                 setPomoSession(null);
             }
             function imp() {
-                const inp = document.createElement("input"); inp.type = "file"; inp.accept = ".json";
-                inp.onchange = ev => {
-                    const r = new FileReader();
-                    r.onload = rv => {
-                        try {
-                            const p = JSON.parse(rv.target.result);
-                            if (!p.materias || !p.tareas) throw new Error("Faltan 'materias' o 'tareas'");
-                            if (!p.tipos) p.tipos = DEFAULT_TIPOS;
-                            if (!p.sesiones) p.sesiones = [];
-                            p.tareas = p.tareas.map(t => ({ items: [], obligatorio: true, ...t }));
-                            setData(p); lastExp.current = hashData(p); setDirty(false); setImpErr(null);
-                        } catch (err) { setImpErr(err.message); }
-                    };
-                    r.readAsText(ev.target.files[0]);
-                };
-                inp.click();
+                PlannerImportExport.openPlannerFilePicker({
+                    onData: (importedPlannerData) => {
+                        commitPlannerState({
+                            nextData: importedPlannerData,
+                            nextDataMode: getCurrentPlannerDataMode(importedPlannerData),
+                            clearImportError: true
+                        });
+                    },
+                    onError: (err) => setImpErr(err.message)
+                });
                 // If importing from welcome, switch to local mode
-                if (appMode === "welcome") { localStorage.setItem(LS_MODE_KEY, "local"); setAppMode("local"); }
+                if (appMode === "welcome") { PlannerStorage.setMode("local"); setAppMode("local"); }
             }
             function onExported() { lastExp.current = hashData(data); setDirty(false); }
             // materias visibles según filtro de año/período
@@ -9503,138 +10181,65 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
 
             // Show welcome screen
             if (appMode === "welcome") {
-                return e(React.Fragment, null,
-                    e(WelcomeScreen, {
-                        onLocal: enterLocal,
-                        onDemo: enterDemo,
-                        onShowHelp: () => setShowHelp(true),
-                        expiredMsg: syncMsg && syncMsg.includes("expiró") ? syncMsg : null,
-                        hasExistingData: onboardingReturnToApp,
-                        onExit: exitOnboardingToApp
-                    }),
-                    customConfirm && e(ConfirmModal, {
-                        title: customConfirm.title,
-                        message: customConfirm.message,
-                        confirmLabel: customConfirm.confirmLabel,
-                        cancelLabel: customConfirm.cancelLabel,
-                        tone: customConfirm.tone,
-                        icon: customConfirm.icon,
-                        onClose: () => setCustomConfirm(null),
-                        onConfirm: () => {
-                            const fn = customConfirm.onConfirm;
-                            setCustomConfirm(null);
-                            if (typeof fn === "function") fn();
-                        }
-                    })
-                );
+                return e(WelcomeGate, {
+                    enterLocal,
+                    enterDemo,
+                    setShowHelp,
+                    syncMsg,
+                    onboardingReturnToApp,
+                    exitOnboardingToApp,
+                    customConfirm,
+                    setCustomConfirm
+                });
             }
 
-            return e("div", { ref: appRef, className: "app " + (chromeExpanded ? "chrome-open" : "chrome-hidden") },
-                e("div", {
-                    ref: chromeShellRef,
-                    className: "chrome-shell" + (chromeExpanded ? " open" : " collapsed"),
-                    onMouseEnter: showChromeTemporarily,
-                    onMouseLeave: scheduleChromeHide,
-                    onFocus: showChromeTemporarily,
-                    onBlur: (ev) => {
-                        if (!ev.currentTarget.contains(ev.relatedTarget)) scheduleChromeHide();
-                    }
-                },
-                    e("div", {
-                        className: "chrome-panel"
-                    },
-                        e("header", { className: "hdr" },
-                            e("button", {
-                                className: "chrome-pin-btn" + (chromePinned ? " pin" : ""),
-                                onClick: () => setChromePinned(v => !v),
-                                title: chromePinned ? "Desfijar la barra" : "Fijar la barra"
-                            }, chromePinned ? "📌" : "☰"),
-                            e("span", { className: "logo" }, "◈ UAI Planner"),
-
-                            e(PeriodoSelector, { anios: aniosDisponibles, fAnio, fPeriodos, setFAnio, togglePeriodo }),
-                            e("nav", { className: "nav", style: { marginLeft: 24 } },
-                                e("div", { style: { display: "flex", gap: 0, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 7, padding: 3 } },
-                                    [
-                                        { v: "hoy", icon: "◈", label: "Hoy", short: "H" },
-                                        { v: "semana", icon: "◈", label: "Semana", short: "S" },
-                                        { v: "materias", icon: "◉", label: "Materias", short: "M" }
-                                    ].map(({ v, icon, label, short }) =>
-                                        e("button", { key: v, className: "nb " + (view === v ? "nba" : ""), onClick: () => setView(v), title: label },
-                                            e("span", { className: "nb-ico", "aria-hidden": "true" }, icon),
-                                            e("span", { className: "nb-label" }, label),
-                                            e("span", { className: "nb-short" }, short)
-                                        )
-                                    )
-                                ),
-                                e("div", { style: { width: 16 } }),
-                                e("div", { style: { display: "flex", gap: 0, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 7, padding: 3 } },
-                                    [
-                                        { v: "backlog", icon: "≡", label: "Backlog", short: "B" },
-                                        { v: "kanban", icon: "⬡", label: "Kanban", short: "K" },
-                                        { v: "calendar", icon: "◷", label: "Calendario", short: "C" }
-                                    ].map(({ v, icon, label, short }) =>
-                                        e("button", { key: v, className: "nb " + (view === v ? "nba" : ""), onClick: () => setView(v), title: label },
-                                            e("span", { className: "nb-ico", "aria-hidden": "true" }, icon),
-                                            e("span", { className: "nb-label" }, label),
-                                            e("span", { className: "nb-short" }, short)
-                                        )
-                                    ),
-                                    e("div", { className: "nav-alert-wrap" },
-                                        e("div", {
-                                            className: "nav-alert-pill" + (urgentTasks.length === 0 ? " nav-alert-zero" : ""),
-                                            title: urgentTasks.length === 0 ? "Sin alertas activas" : `${urgentTasks.length} alertas activas`
-                                        },
-                                            e("span", { className: "nav-alert-dot", "aria-hidden": "true" }),
-                                            e("span", null, urgentTasks.length)
-                                        )
-                                    )
-                                )
-                            ),
-                            e("div", { className: "hdr-btns" },
-                                e("button", {
-                                    className: "iconbtn",
-                                    onClick: () => setShowHelp(true),
-                                    title: "Guía de uso"
-                                }, "?"),
-                                e(ConfigBtn, { onOpenSettings: (tab) => setSettings(tab || "materias") }),
-                                e(DatosBtn, {
-                                    data, dirty, onExported, imp,
-                                    driveConnected, syncStatus, autoSave, showSync,
-                                    setShowSync, handleDriveConnect, handleDriveDisconnect,
-                                    handleDriveSaveNow, handleDriveLoad, toggleAutoSave,
-                                    onReset: () => setResetModal(true), userEmail
-                                })
-                            )
-                        ),
-                        impErr && e("div", { className: "errbanner" }, "⚠ " + impErr),
-                        !["hoy", "semana", "materias"].includes(view) && e("div", { className: "fbar" },
-                            e("select", { value: fm, onChange: ev => setFm(ev.target.value) },
-                                e("option", { value: "all" }, "Todas las materias"),
-                                materiasFiltradas.map(m => e("option", { key: m.id, value: m.id }, m.nombre + (periodoTag(m) ? " — " + periodoTag(m) : "")))
-                            ),
-                            e("select", { value: ft, onChange: ev => setFt(ev.target.value) },
-                                e("option", { value: "all" }, "Todos los tipos"),
-                                tipos.map(t => e("option", { key: t.id, value: t.id }, t.icon + " " + t.label))
-                            ),
-                            e("label", { className: "chklabel", style: { display: "inline-flex", alignItems: "center", gap: 8, padding: "0 10px", height: 36, border: "1px solid var(--line)", borderRadius: 10, background: "var(--card)" } },
-                                e("input", { type: "checkbox", checked: fa === "only", onChange: ev => setFa(ev.target.checked ? "only" : "all") }),
-                                e("span", null, "Solo alertas")
-                            ),
-                            e("span", { className: "cnt responsive-cnt" }, filtered.length + " tareas"),
-                            e("div", { style: { display: "flex", gap: 8, marginLeft: "auto" } },
-                                e("button", { className: "newbtn", onClick: () => setForm({}) },
-                                    e("span", { className: "btn-full" }, "+ Nueva tarea"),
-                                    e("span", { className: "btn-short" }, "+")
-                                ),
-                                e("button", { className: "importbtn", onClick: () => setImportTasksOpen(true) },
-                                    e("span", { className: "btn-full" }, "↑ Importar tareas"),
-                                    e("span", { className: "btn-short" }, "↑")
-                                )
-                            )
-                        )
-                    ),
-                ),
-                e("div", { className: "main" },
+            return e(PlannerChromeShell, {
+                appRef,
+                chromeShellRef,
+                chromeExpanded,
+                chromePinned,
+                setChromePinned,
+                showChromeTemporarily,
+                scheduleChromeHide,
+                aniosDisponibles,
+                fAnio,
+                fPeriodos,
+                setFAnio,
+                togglePeriodo,
+                view,
+                setView,
+                urgentTasks,
+                setShowHelp,
+                setSettings,
+                data,
+                dirty,
+                onExported,
+                imp,
+                driveConnected,
+                syncStatus,
+                autoSave,
+                showSync,
+                setShowSync,
+                handleDriveConnect,
+                handleDriveDisconnect,
+                handleDriveSaveNow,
+                handleDriveLoad,
+                toggleAutoSave,
+                setResetModal,
+                userEmail,
+                impErr,
+                fm,
+                setFm,
+                ft,
+                setFt,
+                tipos,
+                fa,
+                setFa,
+                filtered,
+                materiasFiltradas,
+                setForm,
+                setImportTasksOpen
+            },
                     view === "hoy" && e(HoyView, {
                         materias: materiasFiltradas, sesiones: data.sesiones || [], tareas: data.tareas, isDark, onStartPomo: startPomoFromMateria, mmap, tmap, onEditObjetivos: setEditObjetivoM, franjas, onSaveFranjas: saveFranjas, onEditMateria: editMateriaHoras, urgentTasks,
                         onMoveSlot: (materiaId, fromDia, fromFid, toDia, toFid) => {
@@ -9666,7 +10271,7 @@ Como estás usando Google Drive, el cambio también va a impactar el archivo sin
                     view === "kanban" && e(Kanban, { tareas: filtered, mmap, tmap, isDark, move, onSel: id => setSelId(id) }),
                     view === "calendar" && e(Cal, { tareas: filtered, mmap, tmap, isDark, month: calM, setMonth: setCalM, onSel: id => setSelId(id), onMoveTask: moveTaskToDate, showInicio: calShowInicio, showFin: calShowFin, setShowInicio: setCalShowInicio, setShowFin: setCalShowFin }),
                     view === "materias" && e(MateriasView, { materias: materiasFiltradas, sesiones: data.sesiones || [], tareas: data.tareas, tmap, isDark, onStartPomo: startPomoFromMateria, onEditMateria: editMateriaHoras, onManualSession: setManualSession, onEditSession: editSession, onDeleteSession: deleteSession })
-                ),
+                ,
                 sel && e(TaskModal, {
                     task: sel, mat: mmap[sel.materiaId], tipo: tmap[sel.tipo], isDark, move, toggleItem, onStartPomo: startPomoFromTask, sesiones: data.sesiones || [],
                     tareas: data.tareas,
